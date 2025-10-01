@@ -4,12 +4,17 @@
 
 #include "StationChatApp.hpp"
 
+#include <boost/algorithm/string.hpp>
 #include <boost/program_options.hpp>
 
 #include <chrono>
+#include <cstdint>
 #include <fstream>
 #include <iostream>
+#include <limits>
+#include <stdexcept>
 #include <thread>
+#include <vector>
 
 #ifdef __GNUC__
 #include <execinfo.h>
@@ -18,6 +23,95 @@
 INITIALIZE_EASYLOGGINGPP
 
 StationChatConfig BuildConfiguration(int argc, const char* argv[]);
+
+namespace {
+
+GatewayClusterEndpoint ParseGatewayClusterEndpoint(const std::string& definition) {
+    using boost::algorithm::trim_copy;
+
+    auto trimmed = trim_copy(definition);
+    if (trimmed.empty()) {
+        throw std::runtime_error("gateway_cluster entry cannot be empty");
+    }
+
+    std::string address;
+    std::string remainder;
+
+    if (trimmed.front() == '[') {
+        auto closingBracket = trimmed.find(']');
+        if (closingBracket == std::string::npos) {
+            throw std::runtime_error("Invalid gateway_cluster entry (missing ']'): " + trimmed);
+        }
+
+        address = trimmed.substr(1, closingBracket - 1);
+        remainder = trimmed.substr(closingBracket + 1);
+
+        if (remainder.empty() || remainder.front() != ':') {
+            throw std::runtime_error("Invalid gateway_cluster entry (missing port separator): " + trimmed);
+        }
+
+        remainder.erase(remainder.begin());
+    } else {
+        auto colonPosition = trimmed.find(':');
+        if (colonPosition == std::string::npos) {
+            throw std::runtime_error("Invalid gateway_cluster entry (missing port): " + trimmed);
+        }
+
+        address = trimmed.substr(0, colonPosition);
+        remainder = trimmed.substr(colonPosition + 1);
+    }
+
+    if (address.empty()) {
+        throw std::runtime_error("Invalid gateway_cluster entry (empty address): " + trimmed);
+    }
+
+    auto weightSeparator = remainder.find(':');
+    auto portToken = remainder.substr(0, weightSeparator);
+
+    if (portToken.empty()) {
+        throw std::runtime_error("Invalid gateway_cluster entry (empty port): " + trimmed);
+    }
+
+    uint32_t portValue;
+    try {
+        portValue = static_cast<uint32_t>(std::stoul(portToken));
+    } catch (const std::exception&) {
+        throw std::runtime_error("Invalid gateway_cluster entry (port is not a number): " + trimmed);
+    }
+
+    if (portValue == 0 || portValue > std::numeric_limits<uint16_t>::max()) {
+        throw std::runtime_error("Invalid gateway_cluster entry (port out of range): " + trimmed);
+    }
+
+    uint16_t weight = 1;
+    if (weightSeparator != std::string::npos) {
+        auto weightToken = remainder.substr(weightSeparator + 1);
+        if (weightToken.empty()) {
+            throw std::runtime_error("Invalid gateway_cluster entry (empty weight): " + trimmed);
+        }
+
+        uint32_t weightValue;
+        try {
+            weightValue = static_cast<uint32_t>(std::stoul(weightToken));
+        } catch (const std::exception&) {
+            throw std::runtime_error("Invalid gateway_cluster entry (weight is not a number): " + trimmed);
+        }
+
+        if (weightValue == 0) {
+            throw std::runtime_error("Invalid gateway_cluster entry (weight must be greater than zero): " + trimmed);
+        }
+
+        if (weightValue > std::numeric_limits<uint16_t>::max()) {
+            weightValue = std::numeric_limits<uint16_t>::max();
+        }
+
+        weight = static_cast<uint16_t>(weightValue);
+    }
+
+    return GatewayClusterEndpoint{address, static_cast<uint16_t>(portValue), weight};
+}
+
+} // namespace
 
 #ifdef __GNUC__
 void SignalHandler(int sig);
@@ -47,6 +141,7 @@ StationChatConfig BuildConfiguration(int argc, const char* argv[]) {
     namespace po = boost::program_options;
     StationChatConfig config;
     std::string configFile;
+    std::vector<std::string> clusterGateways;
 
     // Declare a group of options that will be 
     // allowed only on command line
@@ -105,6 +200,8 @@ StationChatConfig BuildConfiguration(int argc, const char* argv[]) {
             "optional override for the website integration database schema")
         ("website_database_socket", po::value<std::string>(&config.websiteIntegration.databaseSocket)->default_value(""),
             "optional override for the website integration database socket path")
+        ("gateway_cluster", po::value<std::vector<std::string>>(&clusterGateways)->multitoken()->composing(),
+            "additional gateway endpoints in host:port[:weight] format for clustering; may be specified multiple times")
         ;
 
     po::options_description cmdline_options;
@@ -129,6 +226,22 @@ StationChatConfig BuildConfiguration(int argc, const char* argv[]) {
         std::cout << cmdline_options << "\n";
         exit(EXIT_SUCCESS);
     }
+
+    config.gatewayCluster.clear();
+    for (const auto& entry : clusterGateways) {
+        if (entry.empty()) {
+            continue;
+        }
+
+        auto trimmed = boost::algorithm::trim_copy(entry);
+        if (trimmed.empty()) {
+            continue;
+        }
+
+        config.gatewayCluster.push_back(ParseGatewayClusterEndpoint(trimmed));
+    }
+
+    config.NormalizeClusterGateways();
 
     return config;
 }

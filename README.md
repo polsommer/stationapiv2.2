@@ -82,6 +82,24 @@ List all characters for a user
 
 Render mailboxes in sync with the game
 
+### ♻️ Clustering & Load Distribution
+
+Need to scale beyond a single gateway? Add multiple `gateway_cluster` entries to
+your configuration (either on the command line or inside `stationchat.cfg`).
+Each entry is expressed as `host:port[:weight]` and the local gateway is added
+automatically, so you only need to list additional nodes.
+
+```ini
+# Send twice as many users to 192.168.1.12 as the other nodes
+gateway_cluster = 192.168.1.10:5001
+gateway_cluster = 192.168.1.11:5001
+gateway_cluster = 192.168.1.12:5001:2
+```
+
+The registrar answers new login requests by walking the cluster list in a
+weighted round-robin pattern, allowing you to spread connections across
+multiple machines while keeping all nodes in sync through the shared database.
+
 🚀 Running
 Windows
 
