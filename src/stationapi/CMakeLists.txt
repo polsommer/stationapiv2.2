@@ -17,4 +17,4 @@ target_include_directories(
          ${PROJECT_SOURCE_DIR}/externals/easyloggingpp ${Boost_INCLUDE_DIRS}
          ${MariaDB_INCLUDE_DIRS})
 
-target_link_libraries(stationapi PUBLIC udplibrary ${MariaDB_LIBRARIES})
+target_link_libraries(stationapi PUBLIC udplibrary ${MariaDB_LIBRARIES} ${STATIONAPI_OPTIONAL_LIBS})
