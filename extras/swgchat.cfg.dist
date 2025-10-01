@@ -1,0 +1,44 @@
+# Address that the gateway server will listen for connections on
+gateway_address = 127.0.0.1
+
+# Port the gateway server will listen for connections on
+gateway_port = 5001
+
+# Address that the registrar server will listen for connections on
+registrar_address = 127.0.0.1
+
+# Port the registrar server will listen for connections on
+registrar_port = 5000
+
+# MariaDB connection information
+database_host = 127.0.0.1
+database_port = 3306
+database_user = stationchat
+database_password = 
+database_schema = stationchat
+# For local socket connections leave host empty and configure the socket path
+database_socket =
+
+# When set to true, binds to the config address; otherwise, binds on any interface
+bind_to_ip = false
+
+# When enabled, stationchat will publish avatar state for the website integration
+website_integration_enabled = false
+
+# Database tables used by the website integration (schema must exist beforehand)
+website_user_link_table = web_user_avatar
+website_online_status_table = web_avatar_status
+website_mail_table = web_persistent_message
+
+# When true, the website integration connects with dedicated credentials instead of
+# reusing the primary chat database connection
+website_use_separate_database = false
+
+# Optional database overrides for the website integration. Leave empty (or zero for the port)
+# to reuse the chat database connection settings defined above.
+website_database_host =
+website_database_port = 0
+website_database_user =
+website_database_password =
+website_database_schema =
+website_database_socket =
