@@ -4,6 +4,8 @@
 
 StationChatApp::StationChatApp(StationChatConfig config)
     : config_{std::move(config)} {
+    config_.NormalizeClusterGateways();
+
     registrarNode_ = std::make_unique<RegistrarNode>(config_);
     LOG(INFO) << "Registrar listening @" << config_.registrarAddress << ":" << config_.registrarPort;
 

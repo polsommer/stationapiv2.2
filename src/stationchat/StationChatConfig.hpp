@@ -1,10 +1,23 @@
 
 #pragma once
 
+#include <algorithm>
 #include <cstdint>
+#include <limits>
 #include <sstream>
 #include <string>
 #include <utility>
+#include <vector>
+
+struct GatewayClusterEndpoint {
+    std::string address;
+    uint16_t port{0};
+    uint16_t weight{1};
+
+    bool Matches(const std::string& otherAddress, uint16_t otherPort) const {
+        return address == otherAddress && port == otherPort;
+    }
+};
 
 struct WebsiteIntegrationConfig {
     bool enabled{false};
@@ -67,4 +80,48 @@ struct StationChatConfig {
     std::string loggerConfig;
     bool bindToIp{false};
     WebsiteIntegrationConfig websiteIntegration;
+    std::vector<GatewayClusterEndpoint> gatewayCluster;
+
+    void NormalizeClusterGateways() {
+        for (auto& endpoint : gatewayCluster) {
+            if (endpoint.weight == 0) {
+                endpoint.weight = 1;
+            }
+        }
+
+        GatewayClusterEndpoint selfEndpoint{gatewayAddress, gatewayPort, 1};
+
+        std::vector<GatewayClusterEndpoint> uniqueEndpoints;
+        uniqueEndpoints.reserve(gatewayCluster.size() + 1);
+
+        auto accumulateEndpoint = [&uniqueEndpoints](const GatewayClusterEndpoint& endpoint) {
+            auto existing = std::find_if(std::begin(uniqueEndpoints), std::end(uniqueEndpoints),
+                [&endpoint](const GatewayClusterEndpoint& value) {
+                    return value.Matches(endpoint.address, endpoint.port);
+                });
+            if (existing == std::end(uniqueEndpoints)) {
+                uniqueEndpoints.push_back(endpoint);
+            } else {
+                auto totalWeight = static_cast<uint32_t>(existing->weight) + endpoint.weight;
+                if (totalWeight > std::numeric_limits<uint16_t>::max()) {
+                    existing->weight = std::numeric_limits<uint16_t>::max();
+                } else {
+                    existing->weight = static_cast<uint16_t>(totalWeight);
+                }
+            }
+        };
+
+        for (const auto& endpoint : gatewayCluster) {
+            accumulateEndpoint(endpoint);
+        }
+
+        if (std::none_of(std::begin(uniqueEndpoints), std::end(uniqueEndpoints),
+                [&selfEndpoint](const GatewayClusterEndpoint& endpoint) {
+                    return endpoint.Matches(selfEndpoint.address, selfEndpoint.port);
+                })) {
+            uniqueEndpoints.push_back(selfEndpoint);
+        }
+
+        gatewayCluster = std::move(uniqueEndpoints);
+    }
 };

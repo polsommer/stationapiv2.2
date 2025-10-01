@@ -492,10 +492,10 @@ LogoutAvatar::LogoutAvatar(GatewayClient* client, const RequestType& request, Re
 }
 
 RegistrarGetChatServer::RegistrarGetChatServer(RegistrarClient* client, const RequestType& request, ResponseType& response) {
-    auto& config = client->GetNode()->GetConfig();
+    auto endpoint = client->GetNode()->SelectGatewayEndpoint();
 
-    response.hostname = ToWideString(config.gatewayAddress);
-    response.port = config.gatewayPort;
+    response.hostname = ToWideString(endpoint.address);
+    response.port = endpoint.port;
 }
 
 RemoveBan::RemoveBan(GatewayClient* client, const RequestType& request, ResponseType& response)
