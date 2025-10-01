@@ -16,7 +16,7 @@ find_path(MariaDB_INCLUDE_DIR
 find_library(MariaDB_LIBRARY
     NAMES mariadb mariadbclient mysqlclient
     HINTS ${MariaDB_ROOT}
-    PATH_SUFFIXES lib lib64)
+    PATH_SUFFIXES lib lib64 lib/aarch64-linux-gnu lib/arm-linux-gnueabihf lib/arm-linux-gnueabi)
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(MariaDB DEFAULT_MSG MariaDB_LIBRARY MariaDB_INCLUDE_DIR)

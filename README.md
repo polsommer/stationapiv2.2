@@ -97,6 +97,22 @@ bash
 Copy code
 cd build/bin
 ./stationchat
+
+### 🥧 Raspberry Pi 4
+
+Raspberry Pi OS (Bullseye/Bookworm) is fully supported. Install the
+dependencies with:
+
+```bash
+sudo apt update
+sudo apt install build-essential cmake libboost-program-options-dev \
+    libmariadb-dev libmariadb-dev-compat libatomic1
+```
+
+`cmake` will automatically link against `libatomic` when it is available on
+ARM targets, which resolves missing symbol errors that can appear on the Pi 4.
+After installing dependencies the standard Linux build instructions shown above
+apply unchanged.
 🔒 Pro tip: Copy build/bin to a safe location before production use. Re-building will overwrite config defaults.
 
 ❤️ Support Development
