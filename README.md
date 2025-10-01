@@ -38,22 +38,20 @@ mkdir build && cd build
 cmake ..
 cmake --build .
 🗄️ Database Setup
-Create a new MariaDB schema + user for swgchat.
 
-Run the initialization script:
+Create a new MariaDB schema + user for swgchat, then run the initialization
+script:
 
-bash
-Copy code
+```bash
 mysql -u <user> -p < extras/init_database.sql
-Edit stationchat.cfg with your DB credentials:
+```
 
-database_host
+Edit `stationchat.cfg` with your DB credentials:
 
-database_user
-
-database_password
-
-database_schema
+- `database_host`
+- `database_user`
+- `database_password`
+- `database_schema`
 
 🌐 Website Integration (Optional)
 swg+ can mirror game data into a website for community portals or account dashboards.
@@ -113,6 +111,23 @@ sudo apt install build-essential cmake libboost-program-options-dev \
 ARM targets, which resolves missing symbol errors that can appear on the Pi 4.
 After installing dependencies the standard Linux build instructions shown above
 apply unchanged.
+
+#### Pi 4 Database Setup
+
+To provision MariaDB on Raspberry Pi OS and import the default schema, run:
+
+```bash
+sudo extras/setup_pi4_database.sh
+```
+
+The helper script will:
+
+1. Install `mariadb-server` if it is missing.
+2. Start and enable the MariaDB service.
+3. Create the `stationchat` schema (if needed).
+4. Prompt you for an admin user + password to import `extras/init_database.sql`.
+
+You can re-run the script safely; it will skip steps that are already complete.
 🔒 Pro tip: Copy build/bin to a safe location before production use. Re-building will overwrite config defaults.
 
 ❤️ Support Development
