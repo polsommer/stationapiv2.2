@@ -121,19 +121,85 @@ swg@raspberrypi:~/stationapi $ ant clean
 
 🗄️ Database Setup
 
-Create a new MariaDB schema + user for swgchat, then run the initialization
-script:
+### Provisioning MariaDB on `192.168.88.6`
 
-```bash
-mysql -u <user> -p < extras/init_database.sql
-```
+The chat gateway expects a MariaDB instance that is reachable from the host
+running `stationchat`. The steps below assume your database server will live on
+the LAN at `192.168.88.6` (replace the address if you pick a different node).
 
-Edit `stationchat.cfg` with your DB credentials:
+1. **Install the server packages**
 
-- `database_host`
-- `database_user`
-- `database_password`
-- `database_schema`
+   ```bash
+   sudo apt update
+   sudo apt install mariadb-server mariadb-client
+   ```
+
+2. **Bind MariaDB to the LAN interface**
+
+   Edit `/etc/mysql/mariadb.conf.d/50-server.cnf` and set `bind-address` to the
+   machine’s LAN IP so remote clients (like your Raspberry Pi) can connect:
+
+   ```ini
+   [mysqld]
+   bind-address = 192.168.88.6
+   ```
+
+   Restart the service after saving the file:
+
+   ```bash
+   sudo systemctl restart mariadb
+   ```
+
+3. **Secure the installation**
+
+   Run the hardening wizard to set a root password, remove anonymous users, and
+   disable the test database:
+
+   ```bash
+   sudo mysql_secure_installation
+   ```
+
+4. **Create the schema and application user**
+
+   Log into the server as root and provision a dedicated account that is
+   restricted to your game host (swap `CHAT_PASSWORD` for a strong secret):
+
+   ```sql
+   sudo mariadb
+   CREATE DATABASE swgchat CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   CREATE USER 'swgchat'@'192.168.88.%' IDENTIFIED BY 'CHAT_PASSWORD';
+   GRANT ALL PRIVILEGES ON swgchat.* TO 'swgchat'@'192.168.88.%';
+   FLUSH PRIVILEGES;
+   EXIT;
+   ```
+
+5. **Initialize the schema**
+
+   From any machine with access (your Pi or the DB host itself), load the repo’s
+   initialization script using the new account:
+
+   ```bash
+   mysql -h 192.168.88.6 -u swgchat -p swgchat < extras/init_database.sql
+   ```
+
+6. **Open the firewall (if applicable)**
+
+   If the server uses `ufw`, allow MariaDB traffic from your LAN so the chat
+   gateway can connect:
+
+   ```bash
+   sudo ufw allow from 192.168.88.0/24 to any port 3306 proto tcp
+   ```
+
+### Pointing `stationchat` at the database
+
+Edit `etc/stationapi/stationchat.cfg` (or the copy staged in `/home/swg/chat`)
+with the credentials you created above:
+
+- `database_host = 192.168.88.6`
+- `database_user = swgchat`
+- `database_password = CHAT_PASSWORD`
+- `database_schema = swgchat`
 
 🌐 Website Integration (Optional)
 swg+ can mirror game data into a website for community portals or account dashboards.
