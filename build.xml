@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="stationchat" default="compile_chat" basedir=".">
+    <description>
+        Ant compatibility wrapper that configures and builds the CMake project.
+    </description>
+
+    <property name="build.dir" value="build"/>
+    <property name="install.prefix" value="/home/swg/chat"/>
+    <property name="run.link" value="/chat"/>
+
+    <condition property="udplibrary.present">
+        <available file="externals/udplibrary/CMakeLists.txt"/>
+    </condition>
+
+    <target name="require-udplibrary">
+        <fail unless="udplibrary.present">
+            Missing externals/udplibrary. Copy the proprietary udplibrary from the
+            original SWG source into externals/udplibrary before running this
+            target.
+        </fail>
+    </target>
+
+    <target name="configure" depends="require-udplibrary">
+        <mkdir dir="${build.dir}"/>
+        <exec executable="cmake" failonerror="true">
+            <arg value="-S"/>
+            <arg value="."/>
+            <arg value="-B"/>
+            <arg value="${build.dir}"/>
+        </exec>
+    </target>
+
+    <target name="compile_chat" depends="configure">
+        <exec executable="cmake" failonerror="true">
+            <arg value="--build"/>
+            <arg value="${build.dir}"/>
+        </exec>
+        <exec executable="cmake" failonerror="true">
+            <arg value="--install"/>
+            <arg value="${build.dir}"/>
+            <arg value="--prefix"/>
+            <arg value="${install.prefix}"/>
+        </exec>
+        <exec executable="${basedir}/extras/finalize_chat_install.sh" failonerror="true">
+            <arg value="${install.prefix}"/>
+            <arg value="${run.link}"/>
+        </exec>
+    </target>
+
+    <target name="clean">
+        <delete dir="${build.dir}"/>
+    </target>
+</project>
