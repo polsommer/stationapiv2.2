@@ -34,9 +34,16 @@ Clone the repository and ensure `udplibrary/` is present in the project root.
 Install dependencies via your package manager, then build:
 
 ```bash
-mkdir build && cd build
-cmake ..
-cmake --build .
+cmake -S . -B build
+cmake --build build
+```
+
+> 💡 Prefer the `-S`/`-B` syntax shown above instead of running `cmake ..` from
+> inside the `build` directory. It makes the intended source and binary
+> directories explicit and avoids the common
+> `CMake Error: The source directory "/home/swg" does not appear to contain
+> CMakeLists.txt` message that appears when CMake is pointed at the wrong path.
+
 🗄️ Database Setup
 
 Create a new MariaDB schema + user for swgchat, then run the initialization
