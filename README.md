@@ -93,6 +93,43 @@ If the helper could create the `/chat` symlink you can start the service with
 `cd /chat && ./stationchat`; otherwise run from `/home/swg/chat` or create your
 own link.
 
+### Keeping `stationchat` alive across reboots
+
+Once the binaries are staged, you can hand service management over to systemd so
+the chat gateway automatically restarts on failures and after power cycles.
+Install [tmux](https://github.com/tmux/tmux/wiki) (used to provide a detachable
+terminal) and drop in the packaged unit:
+
+```bash
+swg@raspberrypi:~/stationapi $ sudo apt install tmux
+swg@raspberrypi:~/stationapi $ sudo ./extras/install_stationchat_service.sh
+swg@raspberrypi:~/stationapi $ sudo systemctl enable --now stationchat.service
+```
+
+The installer copies a small wrapper to `/usr/local/bin/stationchat-tmux-wrapper`
+and writes `/etc/systemd/system/stationchat.service`. The unit launches
+`stationchat` inside a named `tmux` session (`stationchat` by default) so you can
+reattach to the live console at any time:
+
+```bash
+swg@raspberrypi:~ $ sudo -u swg tmux attach -t stationchat
+```
+
+Detach with <kbd>Ctrl</kbd>+<kbd>B</kbd> followed by <kbd>D</kbd> to leave the
+service running in the background. Systemd is configured to restart the gateway
+five seconds after any unexpected exit. To stop or disable the service use:
+
+```bash
+swg@raspberrypi:~ $ sudo systemctl stop stationchat.service
+swg@raspberrypi:~ $ sudo systemctl disable stationchat.service
+```
+
+Customise the install by exporting environment variables before running the
+installer, e.g. set `STATIONAPI_CHAT_SERVICE_USER` when your runtime user differs
+from `swg`, `STATIONAPI_CHAT_PREFIX` when the chat files live outside
+`/home/swg/chat`, or `STATIONAPI_CHAT_TMUX_SESSION` if you want a different tmux
+session name.
+
 ### Option B – `ant compile_chat` (legacy-compatible wrapper)
 
 For anyone migrating from the original SWG Station build scripts, the repo ships
