@@ -10,12 +10,31 @@ if [[ ! -x "${STATIONCHAT_BIN}" ]]; then
   exit 1
 fi
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+CONFIG_SOURCE_DIR="${SCRIPT_DIR}"
+CONFIG_TARGET_DIR="${INSTALL_PREFIX}/etc/stationapi"
+mkdir -p "${CONFIG_TARGET_DIR}"
+for cfg in swgchat logger; do
+  TARGET_PATH="${CONFIG_TARGET_DIR}/${cfg}.cfg"
+  if [[ ! -f "${TARGET_PATH}" ]]; then
+    DIST_PATH="${CONFIG_SOURCE_DIR}/${cfg}.cfg.dist"
+    if [[ -f "${DIST_PATH}" ]]; then
+      cp "${DIST_PATH}" "${TARGET_PATH}"
+      echo "Copied default ${cfg}.cfg to ${TARGET_PATH}"
+    else
+      echo "Warning: missing ${TARGET_PATH} and unable to locate ${DIST_PATH}." >&2
+    fi
+  fi
+done
+
 WRAPPER_PATH="${INSTALL_PREFIX}/stationchat"
 cat <<'WRAP' >"${WRAPPER_PATH}"
 #!/usr/bin/env bash
 set -euo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-exec "${DIR}/bin/stationchat" "$@"
+cd "${DIR}"
+exec "./bin/stationchat" "$@"
 WRAP
 chmod +x "${WRAPPER_PATH}"
 

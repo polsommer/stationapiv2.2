@@ -49,8 +49,8 @@ swg@raspberrypi:~/stationapi $ ./extras/bootstrap_build.sh
 The helper clones `udplibrary` (skipping the step if it already exists), builds
 the project, and installs the runtime plus default configuration files into
 `/home/swg/chat`. It also drops a `stationchat` launcher alongside the `bin/`
-folder and attempts to link `/chat` back to that install directory so you can
-start the server with:
+folder, backfills any missing default configs, and attempts to link `/chat`
+back to that install directory so you can start the server with:
 
 ```bash
 swg@raspberrypi:~ $ cd /chat
@@ -86,9 +86,12 @@ swg@raspberrypi:~/stationapi $ ./extras/finalize_chat_install.sh /home/swg/chat
 
 This sequence leaves a ready-to-run layout in `/home/swg/chat` with the
 `stationchat` launcher in the top-level directory, the executable itself under
-`bin/`, and configuration files under `etc/stationapi/`. If the helper could
-create the `/chat` symlink you can start the service with `cd /chat &&
-./stationchat`; otherwise run from `/home/swg/chat` or create your own link.
+`bin/`, and configuration files under `etc/stationapi/`. The launcher now
+automatically switches to the install directory before starting the binary so
+relative config paths resolve correctly even if you run it from somewhere else.
+If the helper could create the `/chat` symlink you can start the service with
+`cd /chat && ./stationchat`; otherwise run from `/home/swg/chat` or create your
+own link.
 
 ### Option B – `ant compile_chat` (legacy-compatible wrapper)
 
