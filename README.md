@@ -35,16 +35,16 @@ The steps below show a complete Raspberry Pi workflow from the shell prompt the
 legacy guides referenced:
 
 ```
-swg@raspberrypi:~ $ sudo apt update
-swg@raspberrypi:~ $ sudo apt install git ant build-essential cmake \
+sudo apt update
+sudo apt install git ant build-essential cmake \
     libboost-program-options-dev libmariadb-dev libmariadb-dev-compat libatomic1
-swg@raspberrypi:~ $ git clone https://github.com/YOURNAME/swgplus.git stationapi
-swg@raspberrypi:~ $ cd stationapi
-swg@raspberrypi:~/stationapi $ cp -r /path/to/original/udplibrary ./externals/
+git clone https://github.com/polsommer/stationapi
+cd stationapi
+cp -r /path/to/original/udplibrary ./externals/
 # (Result: ./externals/udplibrary/...)
 
 # Or let the helper script pull and build everything in one go:
-swg@raspberrypi:~/stationapi $ ./extras/bootstrap_build.sh
+./stationapi/extras/bootstrap_build.sh
 
 The helper clones `udplibrary` (skipping the step if it already exists), builds
 the project, and installs the runtime plus default configuration files into
@@ -53,8 +53,8 @@ folder, backfills any missing default configs, and attempts to link `/chat`
 back to that install directory so you can start the server with:
 
 ```bash
-swg@raspberrypi:~ $ cd /chat
-swg@raspberrypi:/chat $ ./stationchat
+cd /chat
+./stationchat
 ```
 
 Set the `STATIONAPI_CHAT_PREFIX` environment variable if you want the install to
