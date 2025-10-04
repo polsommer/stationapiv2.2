@@ -45,6 +45,15 @@ swg@raspberrypi:~/stationapi $ cp -r /path/to/original/udplibrary ./externals/
 
 # Or let the helper script pull and build everything in one go:
 swg@raspberrypi:~/stationapi $ ./extras/bootstrap_build.sh
+
+The helper clones `udplibrary` (skipping the step if it already exists), builds
+the project, and installs the runtime plus default configuration files into
+`/home/swg/chat`. Set the `STATIONAPI_CHAT_PREFIX` environment variable if you
+want the install to land somewhere else, e.g.
+
+```
+swg@raspberrypi:~/stationapi $ STATIONAPI_CHAT_PREFIX=$HOME/test-chat ./extras/bootstrap_build.sh
+```
 ```
 
 Once the prerequisites are in place you can build with either CMake directly or
@@ -55,6 +64,7 @@ via the Ant compatibility target described in the next section.
 ```bash
 swg@raspberrypi:~/stationapi $ cmake -S . -B build
 swg@raspberrypi:~/stationapi $ cmake --build build
+swg@raspberrypi:~/stationapi $ cmake --install build --prefix /home/swg/chat
 ```
 
 > 💡 Prefer the `-S`/`-B` syntax shown above instead of running `cmake ..` from
@@ -62,6 +72,10 @@ swg@raspberrypi:~/stationapi $ cmake --build build
 > directories explicit and avoids the common
 > `CMake Error: The source directory "/home/swg" does not appear to contain
 > CMakeLists.txt` message that appears when CMake is pointed at the wrong path.
+
+This sequence leaves a ready-to-run layout in `/home/swg/chat` with the
+`stationchat` executable under `bin/` and configuration files under
+`etc/stationapi/`.
 
 ### Option B – `ant compile_chat` (legacy-compatible wrapper)
 
@@ -74,11 +88,13 @@ swg@raspberrypi:~/stationapi $ ant compile_chat
 ```
 
 Under the hood this target simply calls the same `cmake -S . -B build` and
-`cmake --build build` commands shown above, but it preserves the familiar
+`cmake --build build` commands shown above followed by
+`cmake --install build --prefix /home/swg/chat`, but it preserves the familiar
 command name for older deployment guides. The wrapper performs a quick check
 before invoking CMake and stops early with a clear error if
 `externals/udplibrary` is missing so you know to copy the proprietary library
-over before retrying.
+over before retrying. Pass `-Dinstall.prefix=/path/to/chatdir` if you need a
+different install location.
 
 To remove build artifacts created by either approach, run:
 

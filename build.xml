@@ -5,6 +5,7 @@
     </description>
 
     <property name="build.dir" value="build"/>
+    <property name="install.prefix" value="/home/swg/chat"/>
 
     <condition property="udplibrary.present">
         <available file="externals/udplibrary/CMakeLists.txt"/>
@@ -32,6 +33,12 @@
         <exec executable="cmake" failonerror="true">
             <arg value="--build"/>
             <arg value="${build.dir}"/>
+        </exec>
+        <exec executable="cmake" failonerror="true">
+            <arg value="--install"/>
+            <arg value="${build.dir}"/>
+            <arg value="--prefix"/>
+            <arg value="${install.prefix}"/>
         </exec>
     </target>
 
