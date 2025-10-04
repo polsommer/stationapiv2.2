@@ -491,8 +491,25 @@ LogoutAvatar::LogoutAvatar(GatewayClient* client, const RequestType& request, Re
     }
 }
 
-RegistrarGetChatServer::RegistrarGetChatServer(RegistrarClient* client, const RequestType& request, ResponseType& response) {
-    auto endpoint = client->GetNode()->SelectGatewayEndpoint();
+RegistrarGetChatServer::RegistrarGetChatServer(
+    RegistrarClient* client, const RequestType& request, ResponseType& response) {
+    auto* node = client->GetNode();
+    const auto preferredAddress = FromWideString(request.hostname);
+    const auto preferredPort = request.port;
+    const bool hasPreferred = !preferredAddress.empty() && preferredPort != 0;
+
+    auto endpoint = node->SelectGatewayEndpoint(preferredAddress, preferredPort);
+
+    if (hasPreferred) {
+        if (endpoint.Matches(preferredAddress, preferredPort)) {
+            node->ReportGatewaySuccess(endpoint.address, endpoint.port);
+        } else {
+            node->ReportGatewayFailure(preferredAddress, preferredPort);
+            node->ReportGatewaySuccess(endpoint.address, endpoint.port);
+        }
+    } else {
+        node->ReportGatewaySuccess(endpoint.address, endpoint.port);
+    }
 
     response.hostname = ToWideString(endpoint.address);
     response.port = endpoint.port;
