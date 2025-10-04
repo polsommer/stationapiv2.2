@@ -40,7 +40,8 @@ swg@raspberrypi:~ $ sudo apt install git ant build-essential cmake \
     libboost-program-options-dev libmariadb-dev libmariadb-dev-compat libatomic1
 swg@raspberrypi:~ $ git clone https://github.com/YOURNAME/swgplus.git stationapi
 swg@raspberrypi:~ $ cd stationapi
-swg@raspberrypi:~/stationapi $ cp -r /path/to/original/udplibrary ./udplibrary
+swg@raspberrypi:~/stationapi $ cp -r /path/to/original/udplibrary ./externals/
+# (Result: ./externals/udplibrary/...)
 ```
 
 Once the prerequisites are in place you can build with either CMake directly or
@@ -71,7 +72,10 @@ swg@raspberrypi:~/stationapi $ ant compile_chat
 
 Under the hood this target simply calls the same `cmake -S . -B build` and
 `cmake --build build` commands shown above, but it preserves the familiar
-command name for older deployment guides.
+command name for older deployment guides. The wrapper performs a quick check
+before invoking CMake and stops early with a clear error if
+`externals/udplibrary` is missing so you know to copy the proprietary library
+over before retrying.
 
 To remove build artifacts created by either approach, run:
 

@@ -6,7 +6,19 @@
 
     <property name="build.dir" value="build"/>
 
-    <target name="configure">
+    <condition property="udplibrary.present">
+        <available file="externals/udplibrary/CMakeLists.txt"/>
+    </condition>
+
+    <target name="require-udplibrary">
+        <fail unless="udplibrary.present">
+            Missing externals/udplibrary. Copy the proprietary udplibrary from the
+            original SWG source into externals/udplibrary before running this
+            target.
+        </fail>
+    </target>
+
+    <target name="configure" depends="require-udplibrary">
         <mkdir dir="${build.dir}"/>
         <exec executable="cmake" failonerror="true">
             <arg value="-S"/>
