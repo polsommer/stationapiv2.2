@@ -1,11 +1,16 @@
-# swg+  
+# SWG+
 
 ![Build](https://img.shields.io/travis/com/YOURNAME/swgplus/main?style=flat-square)  
 ![License](https://img.shields.io/github/license/YOURNAME/swgplus?style=flat-square)  
 ![C++](https://img.shields.io/badge/C++-14-blue.svg?style=flat-square)  
 ![MariaDB](https://img.shields.io/badge/Database-MariaDB-orange?style=flat-square)  
 
-> A modern re-implementation of the SOE station services powering chat, login, and cross-galaxy communication for **Star Wars Galaxies** private servers.  
+> A modern re-implementation of the SOE station services powering chat, login, and cross-galaxy communication for **Star Wars Galaxies** private servers.
+
+SWG+ recreates the functionality of the original Station gateway while embracing
+modern tooling and deployment practices. The project aims to give private server
+operators a dependable foundation that is straightforward to build, configure,
+and extend.
 
 ---
 
@@ -19,55 +24,67 @@
 
 ---
 
-## 📦 Requirements  
+## 📦 Requirements
 
-- C++14-compatible compiler  
-- [Boost.Program_options](https://www.boost.org/doc/libs/release/doc/html/program_options.html)  
-- [MariaDB Client Libraries](https://mariadb.com/kb/en/mariadb-client-library/)
-- `udplibrary` (from the original SWG source; must be copied in)
-- [Apache Ant](https://ant.apache.org/) (optional, for the legacy-compatible build wrapper)
+| Component | Purpose |
+| --- | --- |
+| C++14-compatible compiler | Builds the `stationchat` gateway binaries |
+| [Boost.Program_options](https://www.boost.org/doc/libs/release/doc/html/program_options.html) | Parses configuration flags and files |
+| [MariaDB Client Libraries](https://mariadb.com/kb/en/mariadb-client-library/) | Provides database connectivity |
+| `udplibrary` | Proprietary dependency from the original SWG source; copy it into `externals/` |
+| [Apache Ant](https://ant.apache.org/) *(optional)* | Supplies a compatibility wrapper that mirrors historical build workflows |
 
 ---
 
 ## ⚙️ Build Instructions
 
-The steps below show a complete Raspberry Pi workflow from the shell prompt the
-legacy guides referenced:
+The build can be completed entirely on a Raspberry Pi or any modern Linux
+distribution. Expect three high-level phases:
 
-```
+1. **Install prerequisite packages** – compiler, libraries, and helper tools.
+2. **Fetch the source code and proprietary UDP dependency.**
+3. **Compile and install the chat gateway.**
+
+### Quick-start bootstrap script
+
+For a fully automated setup, use the bundled helper script:
+
+```bash
 sudo apt update
 sudo apt install git ant build-essential cmake \
     libboost-program-options-dev libmariadb-dev libmariadb-dev-compat libatomic1
 git clone https://github.com/polsommer/stationapi
 cd stationapi
 cp -r /path/to/original/udplibrary ./externals/
-# (Result: ./externals/udplibrary/...)
+./extras/bootstrap_build.sh
+```
 
-# Or let the helper script pull and build everything in one go:
-./stationapi/extras/bootstrap_build.sh
+What the script does:
 
-The helper clones `udplibrary` (skipping the step if it already exists), builds
-the project, and installs the runtime plus default configuration files into
-`/home/swg/chat`. It also drops a `stationchat` launcher alongside the `bin/`
-folder, backfills any missing default configs, and attempts to link `/chat`
-back to that install directory so you can start the server with:
+1. Ensures `externals/udplibrary` is present (cloning it when available).
+2. Configures and builds the CMake project.
+3. Installs the runtime, default configuration files, and a `stationchat`
+   launcher into `/home/swg/chat`.
+4. Attempts to create a `/chat` symlink pointing to the installation directory.
+
+After a successful run you can start the gateway with:
 
 ```bash
 cd /chat
 ./stationchat
 ```
 
-Set the `STATIONAPI_CHAT_PREFIX` environment variable if you want the install to
-land somewhere else, and `STATIONAPI_CHAT_RUNLINK` if you need the symlink target
-to live somewhere other than `/chat`, e.g.
+Customise the install location by exporting `STATIONAPI_CHAT_PREFIX` before
+invoking the script. `STATIONAPI_CHAT_RUNLINK` overrides the symlink
+destination:
 
-```
-swg@raspberrypi:~/stationapi $ STATIONAPI_CHAT_PREFIX=$HOME/test-chat \
+```bash
+STATIONAPI_CHAT_PREFIX=$HOME/test-chat \
     STATIONAPI_CHAT_RUNLINK=$HOME/chat-link ./extras/bootstrap_build.sh
 ```
 
-Once the prerequisites are in place you can build with either CMake directly or
-via the Ant compatibility target described in the next section.
+Once the prerequisites are in place you can build with either the native CMake
+flow or the Ant compatibility target described below.
 
 ### Option A – CMake (native build system)
 
@@ -85,13 +102,13 @@ swg@raspberrypi:~/stationapi $ ./extras/finalize_chat_install.sh /home/swg/chat
 > CMakeLists.txt` message that appears when CMake is pointed at the wrong path.
 
 This sequence leaves a ready-to-run layout in `/home/swg/chat` with the
-`stationchat` launcher in the top-level directory, the executable itself under
-`bin/`, and configuration files under `etc/stationapi/`. The launcher now
-automatically switches to the install directory before starting the binary so
-relative config paths resolve correctly even if you run it from somewhere else.
-If the helper could create the `/chat` symlink you can start the service with
-`cd /chat && ./stationchat`; otherwise run from `/home/swg/chat` or create your
-own link.
+`stationchat` launcher in the top-level directory, the executable under `bin/`,
+and configuration files under `etc/stationapi/`. The launcher automatically
+switches into the install directory before starting the binary so relative
+configuration paths resolve correctly even if you launch it from elsewhere. If
+the helper created the `/chat` symlink you can start the service with
+`cd /chat && ./stationchat`; otherwise run it from `/home/swg/chat` or create a
+symlink yourself.
 
 ### Keeping `stationchat` alive across reboots
 
@@ -239,13 +256,15 @@ with the credentials you created above:
 - `database_schema = swgchat`
 
 🌐 Website Integration (Optional)
-swg+ can mirror game data into a website for community portals or account dashboards.
+
+SWG+ can mirror game data into a website for community portals or account
+dashboards.
 
 - `web_avatar_status` → avatar presence + timestamps
 - `web_user_avatar` → avatar ↔ website user links
 - `web_persistent_message` → mail mirrored from in-game
 
-Enable by setting in `stationchat.cfg`:
+Enable the integration in `stationchat.cfg`:
 
 ```ini
 website_integration_enabled = true
@@ -261,11 +280,9 @@ website_database_schema = authsite
 
 👉 With this bridge, your website can:
 
-Show online players
-
-List all characters for a user
-
-Render mailboxes in sync with the game
+- Show online players
+- List all characters for a user
+- Render mailboxes in sync with the game
 
 ### ♻️ Clustering & Load Distribution
 
@@ -285,19 +302,31 @@ The registrar answers new login requests by walking the cluster list in a
 weighted round-robin pattern, allowing you to spread connections across
 multiple machines while keeping all nodes in sync through the shared database.
 
-🚀 Running
-Windows
+## 🚀 Running the Gateway
 
-powershell
-Copy code
-cd build/bin
-.\Debug\stationchat.exe
-Linux
+After building, you can launch `stationchat` directly from the generated
+binaries or from the installed prefix:
 
-bash
-Copy code
-cd build/bin
-./stationchat
+- **From a CMake build directory**
+
+  ```powershell
+  # Windows (PowerShell)
+  cd build\bin
+  .\Debug\stationchat.exe
+  ```
+
+  ```bash
+  # Linux / macOS
+  cd build/bin
+  ./stationchat
+  ```
+
+- **From an installed prefix**
+
+  ```bash
+  cd /home/swg/chat
+  ./stationchat
+  ```
 
 ### 🥧 Raspberry Pi 4
 
@@ -310,10 +339,9 @@ sudo apt install build-essential cmake libboost-program-options-dev \
     libmariadb-dev libmariadb-dev-compat libatomic1
 ```
 
-`cmake` will automatically link against `libatomic` when it is available on
-ARM targets, which resolves missing symbol errors that can appear on the Pi 4.
-After installing dependencies the standard Linux build instructions shown above
-apply unchanged.
+`cmake` automatically links against `libatomic` on ARM targets, preventing the
+missing symbol errors that sometimes appear on the Pi 4. After installing
+dependencies, follow the Linux build instructions described earlier.
 
 #### Pi 4 Database Setup
 
@@ -331,15 +359,23 @@ The helper script will:
 4. Prompt you for an admin user + password to import `extras/init_database.sql`.
 
 You can re-run the script safely; it will skip steps that are already complete.
-🔒 Pro tip: Copy build/bin to a safe location before production use. Re-building will overwrite config defaults.
 
-❤️ Support Development
-If you find this project useful, consider supporting ongoing open-source development:
+> 🔒 **Operational tip:** Copy `build/bin` (or your installed prefix) to a safe
+> location before production use. Performing a rebuild overwrites the default
+> configuration files.
 
+## ❤️ Support Development
 
-📄 License
+If you find this project useful, consider supporting ongoing open-source
+development by contributing code, reporting issues, or sharing the project with
+other SWG communities.
+
+## 📄 License
+
 This project is licensed under the MIT License.
 
-🛰️ About
-swg+ is built for the SWG emulator community to restore and extend station-style services from the original game.
-It is not affiliated with Sony Online Entertainment or LucasArts.
+## 🛰️ About
+
+SWG+ is built for the SWG emulator community to restore and extend
+station-style services from the original game. It is not affiliated with Sony
+Online Entertainment or LucasArts.
