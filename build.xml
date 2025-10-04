@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="stationchat" default="compile_chat" basedir=".">
+    <description>
+        Ant compatibility wrapper that configures and builds the CMake project.
+    </description>
+
+    <property name="build.dir" value="build"/>
+
+    <target name="configure">
+        <mkdir dir="${build.dir}"/>
+        <exec executable="cmake" failonerror="true">
+            <arg value="-S"/>
+            <arg value="."/>
+            <arg value="-B"/>
+            <arg value="${build.dir}"/>
+        </exec>
+    </target>
+
+    <target name="compile_chat" depends="configure">
+        <exec executable="cmake" failonerror="true">
+            <arg value="--build"/>
+            <arg value="${build.dir}"/>
+        </exec>
+    </target>
+
+    <target name="clean">
+        <delete dir="${build.dir}"/>
+    </target>
+</project>

@@ -23,20 +23,62 @@
 
 - C++14-compatible compiler  
 - [Boost.Program_options](https://www.boost.org/doc/libs/release/doc/html/program_options.html)  
-- [MariaDB Client Libraries](https://mariadb.com/kb/en/mariadb-client-library/)  
-- `udplibrary` (from the original SWG source; must be copied in)  
+- [MariaDB Client Libraries](https://mariadb.com/kb/en/mariadb-client-library/)
+- `udplibrary` (from the original SWG source; must be copied in)
+- [Apache Ant](https://ant.apache.org/) (optional, for the legacy-compatible build wrapper)
 
 ---
 
-## ⚙️ Build Instructions  
+## ⚙️ Build Instructions
 
-Clone the repository and ensure `udplibrary/` is present in the project root.  
-Install dependencies via your package manager, then build:
+The steps below show a complete Raspberry Pi workflow from the shell prompt the
+legacy guides referenced:
+
+```
+swg@raspberrypi:~ $ sudo apt update
+swg@raspberrypi:~ $ sudo apt install git ant build-essential cmake \
+    libboost-program-options-dev libmariadb-dev libmariadb-dev-compat libatomic1
+swg@raspberrypi:~ $ git clone https://github.com/YOURNAME/swgplus.git stationapi
+swg@raspberrypi:~ $ cd stationapi
+swg@raspberrypi:~/stationapi $ cp -r /path/to/original/udplibrary ./udplibrary
+```
+
+Once the prerequisites are in place you can build with either CMake directly or
+via the Ant compatibility target described in the next section.
+
+### Option A – CMake (native build system)
 
 ```bash
-mkdir build && cd build
-cmake ..
-cmake --build .
+swg@raspberrypi:~/stationapi $ cmake -S . -B build
+swg@raspberrypi:~/stationapi $ cmake --build build
+```
+
+> 💡 Prefer the `-S`/`-B` syntax shown above instead of running `cmake ..` from
+> inside the `build` directory. It makes the intended source and binary
+> directories explicit and avoids the common
+> `CMake Error: The source directory "/home/swg" does not appear to contain
+> CMakeLists.txt` message that appears when CMake is pointed at the wrong path.
+
+### Option B – `ant compile_chat` (legacy-compatible wrapper)
+
+For anyone migrating from the original SWG Station build scripts, the repo ships
+with a small Ant wrapper that mirrors the historical `ant compile_chat`
+workflow:
+
+```bash
+swg@raspberrypi:~/stationapi $ ant compile_chat
+```
+
+Under the hood this target simply calls the same `cmake -S . -B build` and
+`cmake --build build` commands shown above, but it preserves the familiar
+command name for older deployment guides.
+
+To remove build artifacts created by either approach, run:
+
+```bash
+swg@raspberrypi:~/stationapi $ ant clean
+```
+
 🗄️ Database Setup
 
 Create a new MariaDB schema + user for swgchat, then run the initialization
