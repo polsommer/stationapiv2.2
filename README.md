@@ -42,6 +42,9 @@ swg@raspberrypi:~ $ git clone https://github.com/YOURNAME/swgplus.git stationapi
 swg@raspberrypi:~ $ cd stationapi
 swg@raspberrypi:~/stationapi $ cp -r /path/to/original/udplibrary ./externals/
 # (Result: ./externals/udplibrary/...)
+
+# Or let the helper script pull and build everything in one go:
+swg@raspberrypi:~/stationapi $ ./extras/bootstrap_build.sh
 ```
 
 Once the prerequisites are in place you can build with either CMake directly or
