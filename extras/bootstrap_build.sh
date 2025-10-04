@@ -5,6 +5,8 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")"/.. && pwd)"
 UDP_DIR="${REPO_ROOT}/externals/udplibrary"
 INSTALL_PREFIX_DEFAULT="/home/swg/chat"
 INSTALL_PREFIX="${STATIONAPI_CHAT_PREFIX:-${INSTALL_PREFIX_DEFAULT}}"
+RUN_LINK_DEFAULT="/chat"
+RUN_LINK="${STATIONAPI_CHAT_RUNLINK:-${RUN_LINK_DEFAULT}}"
 
 if [[ ! -d "${UDP_DIR}" ]]; then
   echo "Cloning udplibrary into externals/udplibrary..."
@@ -22,4 +24,4 @@ cmake --build .
 cmake --install . --prefix "${INSTALL_PREFIX}"
 popd >/dev/null
 
-echo "Installed chat runtime to ${INSTALL_PREFIX}"
+"${REPO_ROOT}/extras/finalize_chat_install.sh" "${INSTALL_PREFIX}" "${RUN_LINK}"

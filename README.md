@@ -48,12 +48,22 @@ swg@raspberrypi:~/stationapi $ ./extras/bootstrap_build.sh
 
 The helper clones `udplibrary` (skipping the step if it already exists), builds
 the project, and installs the runtime plus default configuration files into
-`/home/swg/chat`. Set the `STATIONAPI_CHAT_PREFIX` environment variable if you
-want the install to land somewhere else, e.g.
+`/home/swg/chat`. It also drops a `stationchat` launcher alongside the `bin/`
+folder and attempts to link `/chat` back to that install directory so you can
+start the server with:
+
+```bash
+swg@raspberrypi:~ $ cd /chat
+swg@raspberrypi:/chat $ ./stationchat
+```
+
+Set the `STATIONAPI_CHAT_PREFIX` environment variable if you want the install to
+land somewhere else, and `STATIONAPI_CHAT_RUNLINK` if you need the symlink target
+to live somewhere other than `/chat`, e.g.
 
 ```
-swg@raspberrypi:~/stationapi $ STATIONAPI_CHAT_PREFIX=$HOME/test-chat ./extras/bootstrap_build.sh
-```
+swg@raspberrypi:~/stationapi $ STATIONAPI_CHAT_PREFIX=$HOME/test-chat \
+    STATIONAPI_CHAT_RUNLINK=$HOME/chat-link ./extras/bootstrap_build.sh
 ```
 
 Once the prerequisites are in place you can build with either CMake directly or
@@ -65,6 +75,7 @@ via the Ant compatibility target described in the next section.
 swg@raspberrypi:~/stationapi $ cmake -S . -B build
 swg@raspberrypi:~/stationapi $ cmake --build build
 swg@raspberrypi:~/stationapi $ cmake --install build --prefix /home/swg/chat
+swg@raspberrypi:~/stationapi $ ./extras/finalize_chat_install.sh /home/swg/chat
 ```
 
 > 💡 Prefer the `-S`/`-B` syntax shown above instead of running `cmake ..` from
@@ -74,8 +85,10 @@ swg@raspberrypi:~/stationapi $ cmake --install build --prefix /home/swg/chat
 > CMakeLists.txt` message that appears when CMake is pointed at the wrong path.
 
 This sequence leaves a ready-to-run layout in `/home/swg/chat` with the
-`stationchat` executable under `bin/` and configuration files under
-`etc/stationapi/`.
+`stationchat` launcher in the top-level directory, the executable itself under
+`bin/`, and configuration files under `etc/stationapi/`. If the helper could
+create the `/chat` symlink you can start the service with `cd /chat &&
+./stationchat`; otherwise run from `/home/swg/chat` or create your own link.
 
 ### Option B – `ant compile_chat` (legacy-compatible wrapper)
 
@@ -89,12 +102,13 @@ swg@raspberrypi:~/stationapi $ ant compile_chat
 
 Under the hood this target simply calls the same `cmake -S . -B build` and
 `cmake --build build` commands shown above followed by
-`cmake --install build --prefix /home/swg/chat`, but it preserves the familiar
-command name for older deployment guides. The wrapper performs a quick check
-before invoking CMake and stops early with a clear error if
-`externals/udplibrary` is missing so you know to copy the proprietary library
-over before retrying. Pass `-Dinstall.prefix=/path/to/chatdir` if you need a
-different install location.
+`cmake --install build --prefix /home/swg/chat`, then runs the same
+`extras/finalize_chat_install.sh` helper to drop the launcher and symlink. The
+wrapper performs a quick check before invoking CMake and stops early with a
+clear error if `externals/udplibrary` is missing so you know to copy the
+proprietary library over before retrying. Pass `-Dinstall.prefix=/path/to/chatdir`
+if you need a different install location and `-Drun.link=/path/to/link` to
+override the symlink destination.
 
 To remove build artifacts created by either approach, run:
 

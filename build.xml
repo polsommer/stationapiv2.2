@@ -6,6 +6,7 @@
 
     <property name="build.dir" value="build"/>
     <property name="install.prefix" value="/home/swg/chat"/>
+    <property name="run.link" value="/chat"/>
 
     <condition property="udplibrary.present">
         <available file="externals/udplibrary/CMakeLists.txt"/>
@@ -39,6 +40,10 @@
             <arg value="${build.dir}"/>
             <arg value="--prefix"/>
             <arg value="${install.prefix}"/>
+        </exec>
+        <exec executable="${basedir}/extras/finalize_chat_install.sh" failonerror="true">
+            <arg value="${install.prefix}"/>
+            <arg value="${run.link}"/>
         </exec>
     </target>
 
