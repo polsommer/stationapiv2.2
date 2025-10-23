@@ -1,5 +1,6 @@
 #include "ChatRoomService.hpp"
 #include "ChatAvatarService.hpp"
+#include "ChatSystem.hpp"
 #include "MariaDB.hpp"
 #include "StreamUtils.hpp"
 #include "StringUtils.hpp"
@@ -65,6 +66,8 @@ void ChatRoomService::LoadRoomsFromStorage(const std::u16string& baseAddress) {
         room->createTime_ = mariadb_column_int(stmt, 12);
         room->nodeLevel_ = mariadb_column_int(stmt, 13);
 
+        room->SetChatSystem(DetermineChatSystem(room->GetRoomName(), room->GetRoomAddress()));
+
         if (!RoomExists(room->GetRoomAddress())) {
             rooms_.emplace_back(std::move(room));
         }
@@ -89,6 +92,8 @@ ChatRoom* ChatRoomService::CreateRoom(const ChatAvatar* creator,
     rooms_.emplace_back(std::make_unique<ChatRoom>(this, nextRoomId_++, creator, roomName,
         roomTopic, roomPassword, roomAttributes, maxRoomSize, roomAddress, srcAddress));
     roomPtr = rooms_.back().get();
+
+    roomPtr->SetChatSystem(DetermineChatSystem(roomPtr->GetRoomName(), roomPtr->GetRoomAddress()));
 
     if (roomPtr->IsPersistent()) {
         PersistNewRoom(*roomPtr);

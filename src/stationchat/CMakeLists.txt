@@ -41,6 +41,7 @@ add_executable(
   ChatAvatarService.hpp
   ChatEnums.cpp
   ChatEnums.hpp
+  ChatSystem.hpp
   ChatRoom.cpp
   ChatRoom.hpp
   ChatRoomService.cpp
