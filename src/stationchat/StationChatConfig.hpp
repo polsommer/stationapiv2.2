@@ -20,16 +20,16 @@ struct GatewayClusterEndpoint {
 };
 
 struct WebsiteIntegrationConfig {
-    bool enabled{false};
+    bool enabled{true};
     std::string userLinkTable{"web_user_avatar"};
     std::string onlineStatusTable{"web_avatar_status"};
     std::string mailTable{"web_persistent_message"};
     bool useSeparateDatabase{false};
-    std::string databaseHost;
-    uint16_t databasePort{0};
-    std::string databaseUser;
+    std::string databaseHost{"mysql73.unoeuro.com"};
+    uint16_t databasePort{3306};
+    std::string databaseUser{"swgplus_com"};
     std::string databasePassword;
-    std::string databaseSchema;
+    std::string databaseSchema{"swgplus_com_db"};
     std::string databaseSocket;
 };
 
@@ -67,15 +67,15 @@ struct StationChatConfig {
     // Maintain compatibility with existing Star Wars Galaxies chat clients,
     // which expect protocol version 2 during the SETAPIVERSION handshake.
     const uint32_t version = 2;
-    std::string gatewayAddress{"127.0.0.1"};
+    std::string gatewayAddress{"192.168.88.6"};
     uint16_t gatewayPort{5001};
-    std::string registrarAddress{"127.0.0.1"};
+    std::string registrarAddress{"192.168.88.6"};
     uint16_t registrarPort{5000};
-    std::string chatDatabaseHost{"127.0.0.1"};
+    std::string chatDatabaseHost{"mysql73.unoeuro.com"};
     uint16_t chatDatabasePort{3306};
-    std::string chatDatabaseUser{"stationchat"};
+    std::string chatDatabaseUser{"swgplus_com"};
     std::string chatDatabasePassword;
-    std::string chatDatabaseSchema{"stationchat"};
+    std::string chatDatabaseSchema{"swgplus_com_db"};
     std::string chatDatabaseSocket;
     std::string loggerConfig;
     bool bindToIp{false};
