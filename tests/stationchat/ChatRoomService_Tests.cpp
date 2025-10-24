@@ -1,6 +1,9 @@
 #include "ChatRoomService.hpp"
 
+#include "ChatAvatarService.hpp"
+#include "ChatEnums.hpp"
 #include "FakeMariaDB.hpp"
+#include "StringUtils.hpp"
 
 #include "catch.hpp"
 
@@ -51,5 +54,32 @@ TEST_CASE("LoadRoomsFromStorage filters by base address prefix", "[stationchat]"
 
     CHECK(alpha->GetRoomName() == std::u16string{u"alpha"});
     CHECK(beta->GetRoomName() == std::u16string{u"beta"});
+}
+
+TEST_CASE("CreateRoom prevents duplicates and persists UTF-8 metadata", "[stationchat]") {
+    MariaDBConnection db;
+    ChatAvatarService avatarService{&db};
+    ChatRoomService service{&avatarService, &db};
+
+    auto* creator = avatarService.CreateAvatar(u"Åsa", u"corellia", 101, 0, u"mos eisley");
+
+    const std::u16string roomName = u"カフェ";
+    const std::u16string roomTopic = u"☕️ break";
+    const std::u16string roomAddress = u"galaxy";
+    const uint32_t attributes = static_cast<uint32_t>(RoomAttributes::PERSISTENT);
+
+    auto* room = service.CreateRoom(creator, roomName, roomTopic, u"", attributes, 64, roomAddress, creator->GetAddress());
+    REQUIRE(room != nullptr);
+    CHECK(room->IsPersistent());
+    REQUIRE(db.insertedRooms.size() == 1);
+    CHECK(db.insertedRooms.front().roomName == FromWideString(roomName));
+    CHECK(db.insertedRooms.front().roomAddress == FromWideString(roomAddress));
+
+    try {
+        service.CreateRoom(creator, roomName, roomTopic, u"", attributes, 64, roomAddress, creator->GetAddress());
+        FAIL("Expected duplicate room creation to throw");
+    } catch (const ChatResultException& ex) {
+        CHECK(ex.code == ChatResultCode::ROOM_ALREADYEXISTS);
+    }
 }
 

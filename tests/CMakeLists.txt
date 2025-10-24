@@ -15,6 +15,8 @@ add_executable(stationchat_tests
     main.cpp
 
     stationchat/ChatRoomService_Tests.cpp
+    stationchat/PersistentMessageService_Tests.cpp
+    stationchat/WebsiteIntegrationService_Tests.cpp
     stationchat/StubChatAvatarService.cpp
     stationchat/FakeMariaDB.cpp
 
@@ -22,6 +24,8 @@ add_executable(stationchat_tests
     ${PROJECT_SOURCE_DIR}/src/stationchat/ChatRoom.cpp
     ${PROJECT_SOURCE_DIR}/src/stationchat/ChatAvatar.cpp
     ${PROJECT_SOURCE_DIR}/src/stationchat/ChatEnums.cpp
+    ${PROJECT_SOURCE_DIR}/src/stationchat/PersistentMessageService.cpp
+    ${PROJECT_SOURCE_DIR}/src/stationchat/WebsiteIntegrationService.cpp
     ${PROJECT_SOURCE_DIR}/src/stationapi/StringUtils.cpp
     ${PROJECT_SOURCE_DIR}/src/stationapi/StreamUtils.cpp)
 

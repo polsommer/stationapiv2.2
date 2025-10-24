@@ -173,6 +173,30 @@ To remove build artifacts created by either approach, run:
 swg@raspberrypi:~/stationapi $ ant clean
 ```
 
+## 🧪 Testing
+
+Catch2-based regression suites live under `tests/` and can be built alongside
+the gateway. The default CMake configuration produces a dedicated binary for the
+chat modules:
+
+```bash
+cmake --build build --target stationchat_tests
+./build/tests/stationchat_tests -r compact
+```
+
+The executable covers:
+
+- `ChatRoomService` room creation flows, including duplicate detection and
+  UTF-8 persistence checks.
+- `PersistentMessageService` storage/retrieval, guaranteeing multi-byte headers
+  survive round-trips and status transitions.
+- `WebsiteIntegrationService` synchronisation paths, ensuring website mirroring
+  honours the enable/disable toggle and updates user link, presence, and mail
+  records.
+
+Running the binary with `--help` lists additional Catch2 filters if you want to
+target an individual suite.
+
 🗄️ Database Setup
 
 ### Provisioning MariaDB on `192.168.88.6`
