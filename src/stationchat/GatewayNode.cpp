@@ -8,12 +8,20 @@
 #include "StationChatConfig.hpp"
 #include "WebsiteIntegrationService.hpp"
 
+#include <string>
+
 GatewayNode::GatewayNode(StationChatConfig& config)
     : Node(this, config.gatewayAddress, config.gatewayPort, config.bindToIp)
     , config_{config} {
     auto connectionString = config.BuildDatabaseConnectionString();
-    if (mariadb_open(connectionString.c_str(), &db_) != MARIADB_OK) {
-        throw std::runtime_error("Can't open database: " + std::string{mariadb_errmsg(db_)});
+    auto result = mariadb_open(connectionString.c_str(), &db_);
+    if (result != MARIADB_OK) {
+        std::string errorMessage = db_ ? mariadb_errmsg(db_) : "Unknown MariaDB error";
+        if (db_) {
+            mariadb_close(db_);
+            db_ = nullptr;
+        }
+        throw std::runtime_error("Can't open database: " + errorMessage);
     }
 
     avatarService_ = std::make_unique<ChatAvatarService>(db_);
@@ -23,7 +31,12 @@ GatewayNode::GatewayNode(StationChatConfig& config)
     websiteIntegrationService_ = std::make_unique<WebsiteIntegrationService>(db_, config_);
 }
 
-GatewayNode::~GatewayNode() { mariadb_close(db_); }
+GatewayNode::~GatewayNode() {
+    if (db_) {
+        mariadb_close(db_);
+        db_ = nullptr;
+    }
+}
 
 ChatAvatarService* GatewayNode::GetAvatarService() { return avatarService_.get(); }
 
