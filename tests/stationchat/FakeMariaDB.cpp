@@ -4,7 +4,7 @@
 #include <cctype>
 #include <cstdint>
 #include <cstring>
-#include <optional>
+#include <boost/optional.hpp>
 #include <unordered_map>
 #include <utility>
 
@@ -197,10 +197,10 @@ const BoundParameter* GetBinding(const MariaDBStatement* stmt, const std::string
     return &stmt->bindings[static_cast<std::size_t>(index - 1)];
 }
 
-std::optional<int> GetIntParameter(const MariaDBStatement* stmt, const std::string& name) {
+boost::optional<int> GetIntParameter(const MariaDBStatement* stmt, const std::string& name) {
     const auto* binding = GetBinding(stmt, name);
     if (!binding || binding->isNull) {
-        return std::nullopt;
+        return boost::none;
     }
     if (binding->kind == BoundParameter::Kind::Int) {
         return binding->intValue;
@@ -209,16 +209,16 @@ std::optional<int> GetIntParameter(const MariaDBStatement* stmt, const std::stri
         try {
             return std::stoi(binding->textValue);
         } catch (...) {
-            return std::nullopt;
+            return boost::none;
         }
     }
-    return std::nullopt;
+    return boost::none;
 }
 
-std::optional<std::string> GetTextParameter(const MariaDBStatement* stmt, const std::string& name) {
+boost::optional<std::string> GetTextParameter(const MariaDBStatement* stmt, const std::string& name) {
     const auto* binding = GetBinding(stmt, name);
     if (!binding || binding->isNull) {
-        return std::nullopt;
+        return boost::none;
     }
     if (binding->kind == BoundParameter::Kind::Text) {
         return binding->textValue;
@@ -226,7 +226,7 @@ std::optional<std::string> GetTextParameter(const MariaDBStatement* stmt, const 
     if (binding->kind == BoundParameter::Kind::Int) {
         return std::to_string(binding->intValue);
     }
-    return std::nullopt;
+    return boost::none;
 }
 
 const FakeColumnDefinition* FindColumnDefinition(const MariaDBConnection* connection,
