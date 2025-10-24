@@ -4,7 +4,18 @@
         Ant compatibility wrapper that configures and builds the CMake project.
     </description>
 
-    <property name="build.dir" value="build"/>
+    <!--
+        Use the location attribute so Ant expands the relative path to an
+        absolute path.  When the project is built from an environment where
+        Ant's working directory differs from the directory containing the
+        buildfile, CMake receives a short relative path such as "build".  In
+        some setups this results in CMake attempting to create its cache under
+        a different root (for example /home/swg/stationapi/build) where the
+        filesystem may not permit writing, producing "Inappropriate ioctl for
+        device" errors.  Making the property absolute ensures CMake always
+        targets the intended build directory inside the project tree.
+    -->
+    <property name="build.dir" location="build"/>
     <property name="install.prefix" value="/home/swg/chat"/>
     <property name="run.link" value="/chat"/>
 
