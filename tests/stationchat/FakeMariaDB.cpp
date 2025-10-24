@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <utility>
 
-namespace fake_mariadb {
+namespace {
 
 enum class StatementType {
     Unknown,
@@ -40,16 +40,14 @@ struct BoundParameter {
     }
 };
 
-} // namespace fake_mariadb
-
 struct MariaDBStatement {
     MariaDBConnection* connection{nullptr};
     std::string sql;
-    fake_mariadb::StatementType type{fake_mariadb::StatementType::Unknown};
+    StatementType type{StatementType::Unknown};
     std::string tableName;
     std::vector<std::string> parameterNames;
     std::unordered_map<std::string, int> parameterIndex;
-    std::vector<fake_mariadb::BoundParameter> bindings;
+    std::vector<BoundParameter> bindings;
 
     // Result set state for room selection
     std::vector<const FakeRoomRow*> matchedRows;
@@ -63,10 +61,6 @@ struct MariaDBStatement {
 
     bool executed{false};
 };
-
-namespace fake_mariadb {
-
-using ::MariaDBStatement;
 
 std::string Trim(const std::string& value) {
     auto begin = value.find_first_not_of(" \t\n\r");
@@ -260,7 +254,7 @@ FakeTimestampValue BuildTimestampValue(const MariaDBStatement* stmt, const std::
         return value;
     }
 
-    auto def = fake_mariadb::FindColumnDefinition(stmt->connection, stmt->tableName, columnName);
+    auto def = FindColumnDefinition(stmt->connection, stmt->tableName, columnName);
     if (def) {
         value.isDateTime = def->isDateTime;
     }
@@ -305,10 +299,7 @@ void AssignTimestampIfProvided(FakeTimestampValue& target, const FakeTimestampVa
     AssignTimestamp(target, source);
 }
 
-} // namespace fake_mariadb
-
-using fake_mariadb::BoundParameter;
-using fake_mariadb::StatementType;
+} // namespace
 
 int mariadb_open(const char*, MariaDBConnection** db) {
     if (!db) {
@@ -343,8 +334,8 @@ int mariadb_prepare(MariaDBConnection* db, const char* sql, int, MariaDBStatemen
     db->lastError = "OK";
     db->preparedStatementCount[sql] += 1;
 
-    fake_mariadb::ParseParameterNames(statement);
-    fake_mariadb::DetermineStatementType(statement);
+    ParseParameterNames(statement);
+    DetermineStatementType(statement);
 
     *stmt = statement;
     return MARIADB_OK;
@@ -428,7 +419,7 @@ int mariadb_step(MariaDBStatement* stmt) {
             stmt->currentIndex = 0;
             stmt->matchedRows.clear();
 
-            auto baseAddress = fake_mariadb::GetTextParameter(stmt, "baseAddress");
+            auto baseAddress = GetTextParameter(stmt, "baseAddress");
             if (!baseAddress) {
                 connection.lastError = "baseAddress not bound";
                 return MARIADB_ERROR;
@@ -458,9 +449,9 @@ int mariadb_step(MariaDBStatement* stmt) {
             stmt->showColumnReturned = false;
             stmt->showColumnHasRow = false;
 
-            auto columnName = fake_mariadb::GetTextParameter(stmt, "column_name");
+            auto columnName = GetTextParameter(stmt, "column_name");
             if (columnName) {
-                auto def = fake_mariadb::FindColumnDefinition(&connection, stmt->tableName, *columnName);
+                auto def = FindColumnDefinition(&connection, stmt->tableName, *columnName);
                 if (def) {
                     stmt->showColumnHasRow = true;
                     stmt->showColumnType = def->typeName;
@@ -486,11 +477,11 @@ int mariadb_step(MariaDBStatement* stmt) {
 
         stmt->executed = true;
 
-        auto userId = fake_mariadb::GetIntParameter(stmt, "user_id").value_or(0);
-        auto avatarId = fake_mariadb::GetIntParameter(stmt, "avatar_id").value_or(0);
-        auto avatarName = fake_mariadb::GetTextParameter(stmt, "avatar_name").value_or("");
-        auto createdAt = fake_mariadb::BuildTimestampValue(stmt, "created_at", "created_at");
-        auto updatedAt = fake_mariadb::BuildTimestampValue(stmt, "updated_at", "updated_at");
+        auto userId = GetIntParameter(stmt, "user_id").value_or(0);
+        auto avatarId = GetIntParameter(stmt, "avatar_id").value_or(0);
+        auto avatarName = GetTextParameter(stmt, "avatar_name").value_or("");
+        auto createdAt = BuildTimestampValue(stmt, "created_at", "created_at");
+        auto updatedAt = BuildTimestampValue(stmt, "updated_at", "updated_at");
 
         auto& rows = connection.userLinkRows[stmt->tableName];
         auto existing = std::find_if(rows.begin(), rows.end(), [avatarId](const FakeUserLinkRow& row) {
@@ -526,14 +517,14 @@ int mariadb_step(MariaDBStatement* stmt) {
 
         stmt->executed = true;
 
-        auto avatarId = fake_mariadb::GetIntParameter(stmt, "avatar_id").value_or(0);
-        auto userId = fake_mariadb::GetIntParameter(stmt, "user_id").value_or(0);
-        auto avatarName = fake_mariadb::GetTextParameter(stmt, "avatar_name").value_or("");
-        auto isOnline = fake_mariadb::GetIntParameter(stmt, "is_online").value_or(0) != 0;
-        auto lastLogin = fake_mariadb::BuildTimestampValue(stmt, "last_login", "last_login");
-        auto lastLogout = fake_mariadb::BuildTimestampValue(stmt, "last_logout", "last_logout");
-        auto updatedAt = fake_mariadb::BuildTimestampValue(stmt, "updated_at", "updated_at");
-        auto createdAt = fake_mariadb::BuildTimestampValue(stmt, "created_at", "created_at");
+        auto avatarId = GetIntParameter(stmt, "avatar_id").value_or(0);
+        auto userId = GetIntParameter(stmt, "user_id").value_or(0);
+        auto avatarName = GetTextParameter(stmt, "avatar_name").value_or("");
+        auto isOnline = GetIntParameter(stmt, "is_online").value_or(0) != 0;
+        auto lastLogin = BuildTimestampValue(stmt, "last_login", "last_login");
+        auto lastLogout = BuildTimestampValue(stmt, "last_logout", "last_logout");
+        auto updatedAt = BuildTimestampValue(stmt, "updated_at", "updated_at");
+        auto createdAt = BuildTimestampValue(stmt, "created_at", "created_at");
 
         auto& rows = connection.statusRows[stmt->tableName];
         auto existing = std::find_if(rows.begin(), rows.end(), [avatarId](const FakeStatusRow& row) {
@@ -555,8 +546,8 @@ int mariadb_step(MariaDBStatement* stmt) {
             existing->userId = static_cast<uint32_t>(userId);
             existing->avatarName = std::move(avatarName);
             existing->isOnline = isOnline;
-            fake_mariadb::AssignTimestampIfProvided(existing->lastLogin, lastLogin);
-            fake_mariadb::AssignTimestampIfProvided(existing->lastLogout, lastLogout);
+            AssignTimestampIfProvided(existing->lastLogin, lastLogin);
+            AssignTimestampIfProvided(existing->lastLogout, lastLogout);
             existing->updatedAt = updatedAt;
             if (!createdAt.isNull && existing->createdAt.isNull) {
                 existing->createdAt = createdAt;
@@ -575,19 +566,19 @@ int mariadb_step(MariaDBStatement* stmt) {
 
         stmt->executed = true;
 
-        auto avatarId = fake_mariadb::GetIntParameter(stmt, "avatar_id").value_or(0);
-        auto userId = fake_mariadb::GetIntParameter(stmt, "user_id").value_or(0);
-        auto avatarName = fake_mariadb::GetTextParameter(stmt, "avatar_name").value_or("");
-        auto messageId = fake_mariadb::GetIntParameter(stmt, "message_id").value_or(0);
-        auto senderName = fake_mariadb::GetTextParameter(stmt, "sender_name").value_or("");
-        auto senderAddress = fake_mariadb::GetTextParameter(stmt, "sender_address").value_or("");
-        auto subject = fake_mariadb::GetTextParameter(stmt, "subject").value_or("");
-        auto body = fake_mariadb::GetTextParameter(stmt, "body").value_or("");
-        auto oob = fake_mariadb::GetTextParameter(stmt, "oob").value_or("");
-        auto sentTime = fake_mariadb::GetIntParameter(stmt, "sent_time").value_or(0);
-        auto createdAt = fake_mariadb::BuildTimestampValue(stmt, "created_at", "created_at");
-        auto updatedAt = fake_mariadb::BuildTimestampValue(stmt, "updated_at", "updated_at");
-        auto status = fake_mariadb::GetIntParameter(stmt, "status").value_or(0);
+        auto avatarId = GetIntParameter(stmt, "avatar_id").value_or(0);
+        auto userId = GetIntParameter(stmt, "user_id").value_or(0);
+        auto avatarName = GetTextParameter(stmt, "avatar_name").value_or("");
+        auto messageId = GetIntParameter(stmt, "message_id").value_or(0);
+        auto senderName = GetTextParameter(stmt, "sender_name").value_or("");
+        auto senderAddress = GetTextParameter(stmt, "sender_address").value_or("");
+        auto subject = GetTextParameter(stmt, "subject").value_or("");
+        auto body = GetTextParameter(stmt, "body").value_or("");
+        auto oob = GetTextParameter(stmt, "oob").value_or("");
+        auto sentTime = GetIntParameter(stmt, "sent_time").value_or(0);
+        auto createdAt = BuildTimestampValue(stmt, "created_at", "created_at");
+        auto updatedAt = BuildTimestampValue(stmt, "updated_at", "updated_at");
+        auto status = GetIntParameter(stmt, "status").value_or(0);
 
         auto& rows = connection.mailRows[stmt->tableName];
         auto existing = std::find_if(rows.begin(), rows.end(), [messageId](const FakeMailRow& row) {
