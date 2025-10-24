@@ -227,77 +227,9 @@ WebsiteIntegrationService::WebsiteIntegrationService(MariaDBConnection* db, cons
     userLinkSql_ = BuildUserLinkSql(userLinkTable_, userLinkCreatedAt_.exists, userLinkUpdatedAt_.exists);
     statusSql_ = BuildStatusSql(onlineStatusTable_, statusCreatedAt_.exists, statusUpdatedAt_.exists);
     mailSql_ = BuildMailSql(mailTable_, mailCreatedAt_.exists, mailUpdatedAt_.exists);
-
-    if (!userLinkSql_.empty()) {
-        MariaDBStatement* stmt{nullptr};
-        auto result = mariadb_prepare(db_, userLinkSql_.c_str(), -1, &stmt, 0);
-        if (result != MARIADB_OK) {
-            throw MariaDBException{result, mariadb_errmsg(db_)};
-        }
-
-        userLinkStmt_.handle = stmt;
-        userLinkStmt_.userIdIdx = mariadb_bind_parameter_index(stmt, "@user_id");
-        userLinkStmt_.avatarIdIdx = mariadb_bind_parameter_index(stmt, "@avatar_id");
-        userLinkStmt_.avatarNameIdx = mariadb_bind_parameter_index(stmt, "@avatar_name");
-        userLinkStmt_.createdAtIdx = userLinkCreatedAt_.exists ? mariadb_bind_parameter_index(stmt, "@created_at") : 0;
-        userLinkStmt_.updatedAtIdx = userLinkUpdatedAt_.exists ? mariadb_bind_parameter_index(stmt, "@updated_at") : 0;
-    }
-
-    if (!statusSql_.empty()) {
-        MariaDBStatement* stmt{nullptr};
-        auto result = mariadb_prepare(db_, statusSql_.c_str(), -1, &stmt, 0);
-        if (result != MARIADB_OK) {
-            throw MariaDBException{result, mariadb_errmsg(db_)};
-        }
-
-        statusStmt_.handle = stmt;
-        statusStmt_.avatarIdIdx = mariadb_bind_parameter_index(stmt, "@avatar_id");
-        statusStmt_.userIdIdx = mariadb_bind_parameter_index(stmt, "@user_id");
-        statusStmt_.avatarNameIdx = mariadb_bind_parameter_index(stmt, "@avatar_name");
-        statusStmt_.isOnlineIdx = mariadb_bind_parameter_index(stmt, "@is_online");
-        statusStmt_.lastLoginIdx = statusLoginAt_.exists ? mariadb_bind_parameter_index(stmt, "@last_login") : 0;
-        statusStmt_.lastLogoutIdx = statusLogoutAt_.exists ? mariadb_bind_parameter_index(stmt, "@last_logout") : 0;
-        statusStmt_.updatedAtIdx = statusUpdatedAt_.exists ? mariadb_bind_parameter_index(stmt, "@updated_at") : 0;
-        statusStmt_.createdAtIdx = statusCreatedAt_.exists ? mariadb_bind_parameter_index(stmt, "@created_at") : 0;
-    }
-
-    if (!mailSql_.empty()) {
-        MariaDBStatement* stmt{nullptr};
-        auto result = mariadb_prepare(db_, mailSql_.c_str(), -1, &stmt, 0);
-        if (result != MARIADB_OK) {
-            throw MariaDBException{result, mariadb_errmsg(db_)};
-        }
-
-        mailStmt_.handle = stmt;
-        mailStmt_.avatarIdIdx = mariadb_bind_parameter_index(stmt, "@avatar_id");
-        mailStmt_.userIdIdx = mariadb_bind_parameter_index(stmt, "@user_id");
-        mailStmt_.avatarNameIdx = mariadb_bind_parameter_index(stmt, "@avatar_name");
-        mailStmt_.messageIdIdx = mariadb_bind_parameter_index(stmt, "@message_id");
-        mailStmt_.senderNameIdx = mariadb_bind_parameter_index(stmt, "@sender_name");
-        mailStmt_.senderAddressIdx = mariadb_bind_parameter_index(stmt, "@sender_address");
-        mailStmt_.subjectIdx = mariadb_bind_parameter_index(stmt, "@subject");
-        mailStmt_.bodyIdx = mariadb_bind_parameter_index(stmt, "@body");
-        mailStmt_.oobIdx = mariadb_bind_parameter_index(stmt, "@oob");
-        mailStmt_.sentTimeIdx = mariadb_bind_parameter_index(stmt, "@sent_time");
-        mailStmt_.createdAtIdx = mailCreatedAt_.exists ? mariadb_bind_parameter_index(stmt, "@created_at") : 0;
-        mailStmt_.updatedAtIdx = mailUpdatedAt_.exists ? mariadb_bind_parameter_index(stmt, "@updated_at") : 0;
-        mailStmt_.statusIdx = mariadb_bind_parameter_index(stmt, "@status");
-    }
 }
 
 WebsiteIntegrationService::~WebsiteIntegrationService() {
-    if (mailStmt_.handle) {
-        mariadb_finalize(mailStmt_.handle);
-        mailStmt_.handle = nullptr;
-    }
-    if (statusStmt_.handle) {
-        mariadb_finalize(statusStmt_.handle);
-        statusStmt_.handle = nullptr;
-    }
-    if (userLinkStmt_.handle) {
-        mariadb_finalize(userLinkStmt_.handle);
-        userLinkStmt_.handle = nullptr;
-    }
     if (ownsDatabase_) {
         mariadb_close(db_);
         db_ = nullptr;
@@ -329,15 +261,25 @@ void WebsiteIntegrationService::RecordPersistentMessage(
 
     EnsureUserLink(destAvatar);
 
-    auto* stmt = mailStmt_.handle;
-    if (!stmt) {
-        throw std::runtime_error("Mail statement not prepared");
-    }
-
-    auto result = mariadb_reset(stmt);
+    MariaDBStatement* stmt;
+    auto result = mariadb_prepare(db_, mailSql_.c_str(), -1, &stmt, 0);
     if (result != MARIADB_OK) {
         throw MariaDBException{result, mariadb_errmsg(db_)};
     }
+
+    auto avatarIdIdx = mariadb_bind_parameter_index(stmt, "@avatar_id");
+    auto userIdIdx = mariadb_bind_parameter_index(stmt, "@user_id");
+    auto avatarNameIdx = mariadb_bind_parameter_index(stmt, "@avatar_name");
+    auto messageIdIdx = mariadb_bind_parameter_index(stmt, "@message_id");
+    auto senderNameIdx = mariadb_bind_parameter_index(stmt, "@sender_name");
+    auto senderAddressIdx = mariadb_bind_parameter_index(stmt, "@sender_address");
+    auto subjectIdx = mariadb_bind_parameter_index(stmt, "@subject");
+    auto bodyIdx = mariadb_bind_parameter_index(stmt, "@body");
+    auto oobIdx = mariadb_bind_parameter_index(stmt, "@oob");
+    auto sentTimeIdx = mariadb_bind_parameter_index(stmt, "@sent_time");
+    auto createdAtIdx = mailCreatedAt_.exists ? mariadb_bind_parameter_index(stmt, "@created_at") : -1;
+    auto updatedAtIdx = mailUpdatedAt_.exists ? mariadb_bind_parameter_index(stmt, "@updated_at") : -1;
+    auto statusIdx = mariadb_bind_parameter_index(stmt, "@status");
 
     std::vector<std::string> ownedStrings;
 
@@ -349,46 +291,27 @@ void WebsiteIntegrationService::RecordPersistentMessage(
     auto oob = FromWideString(message.oob);
     auto now = CurrentUnixTime();
 
-    if (mailStmt_.avatarIdIdx > 0) {
-        mariadb_bind_int(stmt, mailStmt_.avatarIdIdx, destAvatar.GetAvatarId());
-    }
-    if (mailStmt_.userIdIdx > 0) {
-        mariadb_bind_int(stmt, mailStmt_.userIdIdx, destAvatar.GetUserId());
-    }
-    if (mailStmt_.avatarNameIdx > 0) {
-        mariadb_bind_text(stmt, mailStmt_.avatarNameIdx, avatarName.c_str(), -1, 0);
-    }
-    if (mailStmt_.messageIdIdx > 0) {
-        mariadb_bind_int(stmt, mailStmt_.messageIdIdx, message.header.messageId);
-    }
-    if (mailStmt_.senderNameIdx > 0) {
-        mariadb_bind_text(stmt, mailStmt_.senderNameIdx, senderName.c_str(), -1, 0);
-    }
-    if (mailStmt_.senderAddressIdx > 0) {
-        mariadb_bind_text(stmt, mailStmt_.senderAddressIdx, senderAddress.c_str(), -1, 0);
-    }
-    if (mailStmt_.subjectIdx > 0) {
-        mariadb_bind_text(stmt, mailStmt_.subjectIdx, subject.c_str(), -1, 0);
-    }
-    if (mailStmt_.bodyIdx > 0) {
-        mariadb_bind_text(stmt, mailStmt_.bodyIdx, body.c_str(), -1, 0);
-    }
-    if (mailStmt_.oobIdx > 0) {
-        mariadb_bind_text(stmt, mailStmt_.oobIdx, oob.c_str(), -1, 0);
-    }
-    if (mailStmt_.sentTimeIdx > 0) {
-        mariadb_bind_int(stmt, mailStmt_.sentTimeIdx, message.header.sentTime);
-    }
-    BindTimestampParameter(stmt, mailStmt_.createdAtIdx, mailCreatedAt_, now, ownedStrings);
-    BindTimestampParameter(stmt, mailStmt_.updatedAtIdx, mailUpdatedAt_, now, ownedStrings);
-    if (mailStmt_.statusIdx > 0) {
-        mariadb_bind_int(stmt, mailStmt_.statusIdx, static_cast<uint32_t>(message.header.status));
-    }
+    mariadb_bind_int(stmt, avatarIdIdx, destAvatar.GetAvatarId());
+    mariadb_bind_int(stmt, userIdIdx, destAvatar.GetUserId());
+    mariadb_bind_text(stmt, avatarNameIdx, avatarName.c_str(), -1, 0);
+    mariadb_bind_int(stmt, messageIdIdx, message.header.messageId);
+    mariadb_bind_text(stmt, senderNameIdx, senderName.c_str(), -1, 0);
+    mariadb_bind_text(stmt, senderAddressIdx, senderAddress.c_str(), -1, 0);
+    mariadb_bind_text(stmt, subjectIdx, subject.c_str(), -1, 0);
+    mariadb_bind_text(stmt, bodyIdx, body.c_str(), -1, 0);
+    mariadb_bind_text(stmt, oobIdx, oob.c_str(), -1, 0);
+    mariadb_bind_int(stmt, sentTimeIdx, message.header.sentTime);
+    BindTimestampParameter(stmt, createdAtIdx, mailCreatedAt_, now, ownedStrings);
+    BindTimestampParameter(stmt, updatedAtIdx, mailUpdatedAt_, now, ownedStrings);
+    mariadb_bind_int(stmt, statusIdx, static_cast<uint32_t>(message.header.status));
 
     result = mariadb_step(stmt);
     if (result != MARIADB_DONE) {
+        mariadb_finalize(stmt);
         throw MariaDBException{result, mariadb_errmsg(db_)};
     }
+
+    mariadb_finalize(stmt);
 }
 
 void WebsiteIntegrationService::EnsureUserLink(const ChatAvatar& avatar) {
@@ -400,37 +323,36 @@ void WebsiteIntegrationService::EnsureUserLink(const ChatAvatar& avatar) {
         return;
     }
 
-    auto* stmt = userLinkStmt_.handle;
-    if (!stmt) {
-        throw std::runtime_error("User link statement not prepared");
-    }
-
-    auto result = mariadb_reset(stmt);
+    MariaDBStatement* stmt;
+    auto result = mariadb_prepare(db_, userLinkSql_.c_str(), -1, &stmt, 0);
     if (result != MARIADB_OK) {
         throw MariaDBException{result, mariadb_errmsg(db_)};
     }
+
+    auto userIdIdx = mariadb_bind_parameter_index(stmt, "@user_id");
+    auto avatarIdIdx = mariadb_bind_parameter_index(stmt, "@avatar_id");
+    auto avatarNameIdx = mariadb_bind_parameter_index(stmt, "@avatar_name");
+    auto createdAtIdx = userLinkCreatedAt_.exists ? mariadb_bind_parameter_index(stmt, "@created_at") : -1;
+    auto updatedAtIdx = userLinkUpdatedAt_.exists ? mariadb_bind_parameter_index(stmt, "@updated_at") : -1;
 
     std::vector<std::string> ownedStrings;
 
     auto avatarName = FromWideString(avatar.GetName());
     auto now = CurrentUnixTime();
 
-    if (userLinkStmt_.userIdIdx > 0) {
-        mariadb_bind_int(stmt, userLinkStmt_.userIdIdx, avatar.GetUserId());
-    }
-    if (userLinkStmt_.avatarIdIdx > 0) {
-        mariadb_bind_int(stmt, userLinkStmt_.avatarIdIdx, avatar.GetAvatarId());
-    }
-    if (userLinkStmt_.avatarNameIdx > 0) {
-        mariadb_bind_text(stmt, userLinkStmt_.avatarNameIdx, avatarName.c_str(), -1, 0);
-    }
-    BindTimestampParameter(stmt, userLinkStmt_.createdAtIdx, userLinkCreatedAt_, now, ownedStrings);
-    BindTimestampParameter(stmt, userLinkStmt_.updatedAtIdx, userLinkUpdatedAt_, now, ownedStrings);
+    mariadb_bind_int(stmt, userIdIdx, avatar.GetUserId());
+    mariadb_bind_int(stmt, avatarIdIdx, avatar.GetAvatarId());
+    mariadb_bind_text(stmt, avatarNameIdx, avatarName.c_str(), -1, 0);
+    BindTimestampParameter(stmt, createdAtIdx, userLinkCreatedAt_, now, ownedStrings);
+    BindTimestampParameter(stmt, updatedAtIdx, userLinkUpdatedAt_, now, ownedStrings);
 
     result = mariadb_step(stmt);
     if (result != MARIADB_DONE) {
+        mariadb_finalize(stmt);
         throw MariaDBException{result, mariadb_errmsg(db_)};
     }
+
+    mariadb_finalize(stmt);
 }
 
 void WebsiteIntegrationService::UpdateOnlineStatus(const ChatAvatar& avatar, bool isOnline) {
@@ -438,15 +360,20 @@ void WebsiteIntegrationService::UpdateOnlineStatus(const ChatAvatar& avatar, boo
         return;
     }
 
-    auto* stmt = statusStmt_.handle;
-    if (!stmt) {
-        throw std::runtime_error("Status statement not prepared");
-    }
-
-    auto result = mariadb_reset(stmt);
+    MariaDBStatement* stmt;
+    auto result = mariadb_prepare(db_, statusSql_.c_str(), -1, &stmt, 0);
     if (result != MARIADB_OK) {
         throw MariaDBException{result, mariadb_errmsg(db_)};
     }
+
+    auto avatarIdIdx = mariadb_bind_parameter_index(stmt, "@avatar_id");
+    auto userIdIdx = mariadb_bind_parameter_index(stmt, "@user_id");
+    auto avatarNameIdx = mariadb_bind_parameter_index(stmt, "@avatar_name");
+    auto onlineIdx = mariadb_bind_parameter_index(stmt, "@is_online");
+    auto loginIdx = mariadb_bind_parameter_index(stmt, "@last_login");
+    auto logoutIdx = mariadb_bind_parameter_index(stmt, "@last_logout");
+    auto updatedIdx = statusUpdatedAt_.exists ? mariadb_bind_parameter_index(stmt, "@updated_at") : -1;
+    auto createdIdx = statusCreatedAt_.exists ? mariadb_bind_parameter_index(stmt, "@created_at") : -1;
 
     std::vector<std::string> ownedStrings;
 
@@ -456,27 +383,22 @@ void WebsiteIntegrationService::UpdateOnlineStatus(const ChatAvatar& avatar, boo
     auto loginTime = isOnline ? now : 0u;
     auto logoutTime = isOnline ? 0u : now;
 
-    if (statusStmt_.avatarIdIdx > 0) {
-        mariadb_bind_int(stmt, statusStmt_.avatarIdIdx, avatar.GetAvatarId());
-    }
-    if (statusStmt_.userIdIdx > 0) {
-        mariadb_bind_int(stmt, statusStmt_.userIdIdx, avatar.GetUserId());
-    }
-    if (statusStmt_.avatarNameIdx > 0) {
-        mariadb_bind_text(stmt, statusStmt_.avatarNameIdx, avatarName.c_str(), -1, 0);
-    }
-    if (statusStmt_.isOnlineIdx > 0) {
-        mariadb_bind_int(stmt, statusStmt_.isOnlineIdx, static_cast<uint32_t>(isOnline ? 1 : 0));
-    }
-    BindTimestampParameter(stmt, statusStmt_.lastLoginIdx, statusLoginAt_, loginTime, ownedStrings);
-    BindTimestampParameter(stmt, statusStmt_.lastLogoutIdx, statusLogoutAt_, logoutTime, ownedStrings);
-    BindTimestampParameter(stmt, statusStmt_.updatedAtIdx, statusUpdatedAt_, now, ownedStrings);
-    BindTimestampParameter(stmt, statusStmt_.createdAtIdx, statusCreatedAt_, now, ownedStrings);
+    mariadb_bind_int(stmt, avatarIdIdx, avatar.GetAvatarId());
+    mariadb_bind_int(stmt, userIdIdx, avatar.GetUserId());
+    mariadb_bind_text(stmt, avatarNameIdx, avatarName.c_str(), -1, 0);
+    mariadb_bind_int(stmt, onlineIdx, static_cast<uint32_t>(isOnline ? 1 : 0));
+    BindTimestampParameter(stmt, loginIdx, statusLoginAt_, loginTime, ownedStrings);
+    BindTimestampParameter(stmt, logoutIdx, statusLogoutAt_, logoutTime, ownedStrings);
+    BindTimestampParameter(stmt, updatedIdx, statusUpdatedAt_, now, ownedStrings);
+    BindTimestampParameter(stmt, createdIdx, statusCreatedAt_, now, ownedStrings);
 
     result = mariadb_step(stmt);
     if (result != MARIADB_DONE) {
+        mariadb_finalize(stmt);
         throw MariaDBException{result, mariadb_errmsg(db_)};
     }
+
+    mariadb_finalize(stmt);
 }
 
 WebsiteIntegrationService::ColumnInfo WebsiteIntegrationService::InspectColumn(
