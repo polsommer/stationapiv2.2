@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 class ChatAvatar;
@@ -65,6 +66,11 @@ private:
         int statusIdx{0};
     };
 
+    struct PreparedShowColumnsStatement {
+        MariaDBStatement* handle{nullptr};
+        int columnNameIdx{0};
+    };
+
     void EnsureUserLink(const ChatAvatar& avatar);
     void UpdateOnlineStatus(const ChatAvatar& avatar, bool isOnline);
     ColumnInfo InspectColumn(const std::string& table, const std::string& column);
@@ -93,4 +99,5 @@ private:
     PreparedUserLinkStatement userLinkStmt_;
     PreparedStatusStatement statusStmt_;
     PreparedMailStatement mailStmt_;
+    std::unordered_map<std::string, PreparedShowColumnsStatement> showColumnsStatements_;
 };
