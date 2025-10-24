@@ -286,14 +286,6 @@ WebsiteIntegrationService::WebsiteIntegrationService(MariaDBConnection* db, cons
 }
 
 WebsiteIntegrationService::~WebsiteIntegrationService() {
-    for (auto& entry : showColumnsStatements_) {
-        if (entry.second.handle) {
-            mariadb_finalize(entry.second.handle);
-            entry.second.handle = nullptr;
-        }
-    }
-    showColumnsStatements_.clear();
-
     if (mailStmt_.handle) {
         mariadb_finalize(mailStmt_.handle);
         mailStmt_.handle = nullptr;
@@ -495,32 +487,17 @@ WebsiteIntegrationService::ColumnInfo WebsiteIntegrationService::InspectColumn(
         return info;
     }
 
-    if (table.empty()) {
-        return info;
-    }
+    std::string sql = "SHOW COLUMNS FROM " + QuoteIdentifier(table) + " LIKE @column_name";
 
-    auto& prepared = showColumnsStatements_[table];
-    if (!prepared.handle) {
-        std::string sql = "SHOW COLUMNS FROM " + QuoteIdentifier(table) + " LIKE @column_name";
-
-        MariaDBStatement* stmt{nullptr};
-        auto result = mariadb_prepare(db_, sql.c_str(), -1, &stmt, 0);
-        if (result != MARIADB_OK) {
-            throw MariaDBException{result, mariadb_errmsg(db_)};
-        }
-
-        prepared.handle = stmt;
-        prepared.columnNameIdx = mariadb_bind_parameter_index(stmt, "@column_name");
-    }
-
-    auto* stmt = prepared.handle;
-    auto result = mariadb_reset(stmt);
+    MariaDBStatement* stmt;
+    auto result = mariadb_prepare(db_, sql.c_str(), -1, &stmt, 0);
     if (result != MARIADB_OK) {
         throw MariaDBException{result, mariadb_errmsg(db_)};
     }
 
-    if (prepared.columnNameIdx > 0) {
-        mariadb_bind_text(stmt, prepared.columnNameIdx, column.c_str(), -1, 0);
+    auto columnIdx = mariadb_bind_parameter_index(stmt, "@column_name");
+    if (columnIdx > 0) {
+        mariadb_bind_text(stmt, columnIdx, column.c_str(), -1, 0);
     }
 
     result = mariadb_step(stmt);
@@ -531,9 +508,11 @@ WebsiteIntegrationService::ColumnInfo WebsiteIntegrationService::InspectColumn(
             info.isDateTime = ContainsDateTimeType(reinterpret_cast<const char*>(typePtr));
         }
     } else if (result != MARIADB_DONE) {
+        mariadb_finalize(stmt);
         throw MariaDBException{result, mariadb_errmsg(db_)};
     }
 
+    mariadb_finalize(stmt);
     return info;
 }
 

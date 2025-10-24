@@ -82,6 +82,5 @@ struct MariaDBConnection {
     std::unordered_map<std::string, std::vector<FakeUserLinkRow>> userLinkRows;
     std::unordered_map<std::string, std::vector<FakeStatusRow>> statusRows;
     std::unordered_map<std::string, std::vector<FakeMailRow>> mailRows;
-    std::unordered_map<std::string, int> preparedStatementCount;
 };
 

@@ -332,7 +332,6 @@ int mariadb_prepare(MariaDBConnection* db, const char* sql, int, MariaDBStatemen
     statement->sql = sql;
     db->lastPreparedSql = sql;
     db->lastError = "OK";
-    db->preparedStatementCount[sql] += 1;
 
     ParseParameterNames(statement);
     DetermineStatementType(statement);
