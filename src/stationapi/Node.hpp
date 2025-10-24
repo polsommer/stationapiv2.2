@@ -7,12 +7,27 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 #include <stdexcept>
 
 template <typename NodeT, typename ClientT>
 class Node : public UdpManagerHandler
 {
+private:
+    struct UdpManagerDeleter
+    {
+        void operator()(UdpManager *manager) const noexcept
+        {
+            if (manager != nullptr)
+            {
+                manager->Release();
+            }
+        }
+    };
+
+    using UdpManagerPtr = std::unique_ptr<UdpManager, UdpManagerDeleter>;
+
 public:
     explicit Node(NodeT *node, const std::string &listenAddress, uint16_t listenPort, bool bindToIp = false)
         : node_{node}
@@ -32,10 +47,9 @@ public:
             std::copy(std::begin(listenAddress), std::end(listenAddress), params.bindIpAddress);
         }
 
-        udpManager_ = new UdpManager(&params);
+        UdpManagerPtr udpManager{new UdpManager(&params)};
+        udpManager_ = std::move(udpManager);
     }
-
-    virtual ~Node() { udpManager_->Release(); }
 
     void Tick()
     {
@@ -62,5 +76,5 @@ private:
 
     std::vector<std::unique_ptr<ClientT>> clients_;
     NodeT *node_;
-    UdpManager *udpManager_;
+    UdpManagerPtr udpManager_;
 };
