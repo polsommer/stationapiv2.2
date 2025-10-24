@@ -1,6 +1,4 @@
 include_directories(${PROJECT_SOURCE_DIR}/externals/catch
-    ${PROJECT_SOURCE_DIR}/externals/boost
-    ${PROJECT_SOURCE_DIR}/externals/udplibrary
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/src/stationapi)
 
@@ -31,8 +29,4 @@ add_executable(stationchat_tests
 target_include_directories(stationchat_tests PRIVATE
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/externals/catch
-    ${PROJECT_SOURCE_DIR}/externals/easyloggingpp
-    ${PROJECT_SOURCE_DIR}/externals/boost
-    ${PROJECT_SOURCE_DIR}/externals/udplibrary)
-
-target_link_libraries(stationchat_tests PRIVATE udplibrary)
+    ${PROJECT_SOURCE_DIR}/externals/easyloggingpp)
