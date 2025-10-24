@@ -27,6 +27,44 @@ private:
         bool isDateTime{false};
     };
 
+    struct PreparedUserLinkStatement {
+        MariaDBStatement* handle{nullptr};
+        int userIdIdx{0};
+        int avatarIdIdx{0};
+        int avatarNameIdx{0};
+        int createdAtIdx{0};
+        int updatedAtIdx{0};
+    };
+
+    struct PreparedStatusStatement {
+        MariaDBStatement* handle{nullptr};
+        int avatarIdIdx{0};
+        int userIdIdx{0};
+        int avatarNameIdx{0};
+        int isOnlineIdx{0};
+        int lastLoginIdx{0};
+        int lastLogoutIdx{0};
+        int updatedAtIdx{0};
+        int createdAtIdx{0};
+    };
+
+    struct PreparedMailStatement {
+        MariaDBStatement* handle{nullptr};
+        int avatarIdIdx{0};
+        int userIdIdx{0};
+        int avatarNameIdx{0};
+        int messageIdIdx{0};
+        int senderNameIdx{0};
+        int senderAddressIdx{0};
+        int subjectIdx{0};
+        int bodyIdx{0};
+        int oobIdx{0};
+        int sentTimeIdx{0};
+        int createdAtIdx{0};
+        int updatedAtIdx{0};
+        int statusIdx{0};
+    };
+
     void EnsureUserLink(const ChatAvatar& avatar);
     void UpdateOnlineStatus(const ChatAvatar& avatar, bool isOnline);
     ColumnInfo InspectColumn(const std::string& table, const std::string& column);
@@ -52,4 +90,7 @@ private:
     ColumnInfo statusLogoutAt_;
     ColumnInfo mailCreatedAt_;
     ColumnInfo mailUpdatedAt_;
+    PreparedUserLinkStatement userLinkStmt_;
+    PreparedStatusStatement statusStmt_;
+    PreparedMailStatement mailStmt_;
 };

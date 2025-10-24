@@ -596,6 +596,20 @@ int mariadb_step(MariaDBStatement* stmt) {
     return MARIADB_ROW;
 }
 
+int mariadb_reset(MariaDBStatement* stmt) {
+    if (!stmt) {
+        return MARIADB_OK;
+    }
+
+    ClearResult(stmt);
+    stmt->executed = false;
+    stmt->isSelect = false;
+    stmt->currentRow = nullptr;
+    stmt->currentLengths.clear();
+    stmt->connectionHandleAtExecution = nullptr;
+    return MARIADB_OK;
+}
+
 int mariadb_finalize(MariaDBStatement* stmt) {
     if (!stmt) {
         return MARIADB_OK;

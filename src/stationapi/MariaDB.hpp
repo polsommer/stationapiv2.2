@@ -43,6 +43,7 @@ int mariadb_bind_text(MariaDBStatement* stmt, int index, const char* value, int 
 int mariadb_bind_blob(MariaDBStatement* stmt, int index, const void* value, int length, void (*)(void*));
 
 int mariadb_step(MariaDBStatement* stmt);
+int mariadb_reset(MariaDBStatement* stmt);
 int mariadb_finalize(MariaDBStatement* stmt);
 
 int mariadb_column_int(MariaDBStatement* stmt, int column);
