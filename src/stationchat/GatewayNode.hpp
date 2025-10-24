@@ -44,5 +44,5 @@ private:
     std::unique_ptr<WebsiteIntegrationService> websiteIntegrationService_;
     std::map<std::u16string, GatewayClient*> clientAddressMap_;
     StationChatConfig& config_;
-    MariaDBConnection* db_;
+    MariaDBConnection* db_{nullptr};
 };
