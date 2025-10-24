@@ -18,10 +18,10 @@ include(ModernCpp)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 if (EXISTS "${PROJECT_SOURCE_DIR}/externals/udplibrary/CMakeLists.txt")
-    message(STATUS "Detected udplibrary")
+    message(STATUS "Detected udplibrary sources in externals/udplibrary")
     set(HAVE_UDPLIBRARY 1)
 else()
-    message(FATAL_ERROR "udplibrary required... copy from swg source to the externals directory")
+    message(FATAL_ERROR "Missing externals/udplibrary. Restore the bundled stub or provide the proprietary library.")
 endif()
 
 add_definitions(-DBOOST_ALL_NO_LIB)

@@ -31,7 +31,7 @@ and extend.
 | C++14-compatible compiler | Builds the `stationchat` gateway binaries |
 | [Boost.Program_options](https://www.boost.org/doc/libs/release/doc/html/program_options.html) | Parses configuration flags and files |
 | [MariaDB Client Libraries](https://mariadb.com/kb/en/mariadb-client-library/) | Provides database connectivity |
-| `udplibrary` | Proprietary dependency from the original SWG source; copy it into `externals/` |
+| `udplibrary` | Bundled open-source stub of the proprietary UDP manager. Replace it with the original library when a licensed copy is available. |
 | [Apache Ant](https://ant.apache.org/) *(optional)* | Supplies a compatibility wrapper that mirrors historical build workflows |
 
 ---
@@ -42,7 +42,7 @@ The build can be completed entirely on a Raspberry Pi or any modern Linux
 distribution. Expect three high-level phases:
 
 1. **Install prerequisite packages** – compiler, libraries, and helper tools.
-2. **Fetch the source code and proprietary UDP dependency.**
+2. **Fetch the source code (a stub UDP library is bundled; drop in the proprietary one if you have access).**
 3. **Compile and install the chat gateway.**
 
 ### Quick-start bootstrap script
@@ -55,13 +55,12 @@ sudo apt install git ant build-essential cmake \
     libboost-program-options-dev libmariadb-dev libmariadb-dev-compat libatomic1
 git clone https://github.com/polsommer/stationapi
 cd stationapi
-cp -r /path/to/original/udplibrary ./externals/
 ./extras/bootstrap_build.sh
 ```
 
 What the script does:
 
-1. Ensures `externals/udplibrary` is present (cloning it when available).
+1. Ensures `externals/udplibrary` is present. The repository ships with an open-source stub so manual steps are rarely required.
 2. Configures and builds the CMake project.
 3. Installs the runtime, default configuration files, and a `stationchat`
    launcher into `/home/swg/chat`.
@@ -162,10 +161,10 @@ Under the hood this target simply calls the same `cmake -S . -B build` and
 `cmake --install build --prefix /home/swg/chat`, then runs the same
 `extras/finalize_chat_install.sh` helper to drop the launcher and symlink. The
 wrapper performs a quick check before invoking CMake and stops early with a
-clear error if `externals/udplibrary` is missing so you know to copy the
-proprietary library over before retrying. Pass `-Dinstall.prefix=/path/to/chatdir`
-if you need a different install location and `-Drun.link=/path/to/link` to
-override the symlink destination.
+clear error if `externals/udplibrary` is missing so you can restore the bundled
+stub or provide the original proprietary library before retrying. Pass
+`-Dinstall.prefix=/path/to/chatdir` if you need a different install location and
+`-Drun.link=/path/to/link` to override the symlink destination.
 
 To remove build artifacts created by either approach, run:
 
