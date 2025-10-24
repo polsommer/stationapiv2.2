@@ -328,12 +328,12 @@ int mariadb_open(const char* connectionString, MariaDBConnection** db) {
         info = ParseConnectionString(connectionString ? connectionString : "");
     } catch (const std::exception& ex) {
         SetError(connection, ex.what());
-        delete connection;
+        *db = connection;
         return MARIADB_ERROR;
     }
     if (info.user.empty() || info.database.empty()) {
         SetError(connection, "MariaDB connection string must include user and database");
-        delete connection;
+        *db = connection;
         return MARIADB_ERROR;
     }
 
@@ -345,7 +345,7 @@ int mariadb_open(const char* connectionString, MariaDBConnection** db) {
     connection->socketPath = info.socketPath;
 
     if (!Connect(connection)) {
-        delete connection;
+        *db = connection;
         return MARIADB_ERROR;
     }
 
