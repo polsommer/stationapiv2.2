@@ -4,40 +4,6 @@
 #include <cstdint>
 #include <string>
 
-enum class ChatSystemType : uint32_t {
-    SPATIAL = 0,
-    PLANET = 1,
-    GALAXY = 2,
-};
-
-inline ChatSystemType ChatSystemFromNodeLevel(uint32_t nodeLevel) {
-    switch (static_cast<ChatSystemType>(nodeLevel)) {
-    case ChatSystemType::SPATIAL:
-    case ChatSystemType::PLANET:
-    case ChatSystemType::GALAXY:
-        return static_cast<ChatSystemType>(nodeLevel);
-    default:
-        return ChatSystemType::SPATIAL;
-    }
-}
-
-inline uint32_t NodeLevelFromChatSystem(ChatSystemType type) {
-    return static_cast<uint32_t>(type);
-}
-
-inline const char* ToString(ChatSystemType type) {
-    switch (type) {
-    case ChatSystemType::SPATIAL:
-        return "SPATIAL";
-    case ChatSystemType::PLANET:
-        return "PLANET";
-    case ChatSystemType::GALAXY:
-        return "GALAXY";
-    default:
-        return "SPATIAL";
-    }
-}
-
 enum class ChatRequestType : uint16_t {
     LOGINAVATAR = 0,
     LOGOUTAVATAR,

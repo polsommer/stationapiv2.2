@@ -50,8 +50,6 @@ public:
     uint32_t GetRoomId() const { return roomId_; }
     uint32_t GetCreateTime() const { return createTime_; }
     uint32_t GetNodeLevel() const { return nodeLevel_; }
-    ChatSystemType GetChatSystem() const { return ChatSystemFromNodeLevel(nodeLevel_); }
-    void SetChatSystem(ChatSystemType system) { nodeLevel_ = NodeLevelFromChatSystem(system); }
 
     const std::vector<ChatAvatar*> GetAvatars() const { return avatars_; }    
     /** Returns a list of id's in the room that are not ignoring the srcAvatar.
@@ -106,7 +104,7 @@ private:
     uint32_t maxRoomSize_;
     uint32_t roomId_ = 0;
     uint32_t createTime_ = 0;
-    uint32_t nodeLevel_ = NodeLevelFromChatSystem(ChatSystemType::SPATIAL);
+    uint32_t nodeLevel_ = 0;
     uint32_t roomMessageId_ = 1;
     int32_t dbId_ = -1;
 
