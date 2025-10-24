@@ -1,4 +1,4 @@
-#include "ChatAvatarService.hpp"
+#include "stationchat/ChatAvatarService.hpp"
 
 ChatAvatarService::ChatAvatarService(MariaDBConnection* db)
     : db_{db} {}
