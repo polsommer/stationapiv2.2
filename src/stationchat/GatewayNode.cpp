@@ -10,17 +10,11 @@
 
 GatewayNode::GatewayNode(StationChatConfig& config)
     : Node(this, config.gatewayAddress, config.gatewayPort, config.bindToIp)
-    , config_{config}
-    , db_{nullptr} {
+    , config_{config} {
     auto connectionString = config.BuildDatabaseConnectionString();
-    MariaDBConnection* connection{nullptr};
-    if (mariadb_open(connectionString.c_str(), &connection) != MARIADB_OK) {
-        const std::string errorMessage = connection ? mariadb_errmsg(connection) : "Unknown MariaDB error";
-        mariadb_close(connection);
-        throw std::runtime_error("Can't open database: " + errorMessage);
+    if (mariadb_open(connectionString.c_str(), &db_) != MARIADB_OK) {
+        throw std::runtime_error("Can't open database: " + std::string{mariadb_errmsg(db_)});
     }
-
-    db_ = connection;
 
     avatarService_ = std::make_unique<ChatAvatarService>(db_);
     roomService_ = std::make_unique<ChatRoomService>(avatarService_.get(), db_);

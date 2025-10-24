@@ -202,9 +202,7 @@ WebsiteIntegrationService::WebsiteIntegrationService(MariaDBConnection* db, cons
     if (config.websiteIntegration.useSeparateDatabase) {
         MariaDBConnection* integrationDb = nullptr;
         if (mariadb_open(connectionString.c_str(), &integrationDb) != MARIADB_OK) {
-            const std::string errorMessage = integrationDb ? mariadb_errmsg(integrationDb) : "Unknown MariaDB error";
-            mariadb_close(integrationDb);
-            throw std::runtime_error("Can't open website integration database connection: " + errorMessage);
+            throw std::runtime_error("Can't open website integration database connection");
         }
 
         db_ = integrationDb;
