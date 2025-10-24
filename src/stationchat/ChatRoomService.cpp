@@ -21,7 +21,7 @@ void ChatRoomService::LoadRoomsFromStorage(const std::u16string& baseAddress) {
 
     char sql[] = "SELECT id, creator_id, creator_name, creator_address, room_name, room_topic, "
                  "room_password, room_prefix, room_address, room_attributes, room_max_size, "
-                 "room_message_id, created_at, node_level FROM room WHERE room_address LIKE CONCAT(@baseAddress, '%')";
+                 "room_message_id, created_at, node_level FROM room WHERE room_address LIKE @baseAddress||'%'";
 
     if (mariadb_prepare(db_, sql, -1, &stmt, 0) != MARIADB_OK) {
         throw std::runtime_error("Error preparing SQL statement");
