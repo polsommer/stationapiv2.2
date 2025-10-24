@@ -123,3 +123,45 @@ TEST_CASE("Website integration upserts login and status records", "[stationchat]
 
     REQUIRE(linkRows.size() == 1);
 }
+
+TEST_CASE("Website integration caches SHOW COLUMNS statements", "[stationchat][website]") {
+    MariaDBConnection db;
+    auto config = MakeConfig();
+
+    db.userLinkTableName = config.websiteIntegration.userLinkTable;
+    db.statusTableName = config.websiteIntegration.onlineStatusTable;
+    db.mailTableName = config.websiteIntegration.mailTable;
+
+    ConfigureColumn(db, db.userLinkTableName, "created_at", true);
+    ConfigureColumn(db, db.userLinkTableName, "updated_at", true);
+    ConfigureColumn(db, db.statusTableName, "created_at", true);
+    ConfigureColumn(db, db.statusTableName, "updated_at", true);
+    ConfigureColumn(db, db.statusTableName, "last_login", true);
+    ConfigureColumn(db, db.statusTableName, "last_logout", true);
+    ConfigureColumn(db, db.mailTableName, "created_at", true);
+    ConfigureColumn(db, db.mailTableName, "updated_at", true);
+
+    WebsiteIntegrationService service{&db, config};
+    REQUIRE(service.IsEnabled());
+
+    const auto userLinkSql = std::string{"SHOW COLUMNS FROM `"} + db.userLinkTableName + "` LIKE @column_name";
+    const auto statusSql = std::string{"SHOW COLUMNS FROM `"} + db.statusTableName + "` LIKE @column_name";
+    const auto mailSql = std::string{"SHOW COLUMNS FROM `"} + db.mailTableName + "` LIKE @column_name";
+
+    CHECK(db.preparedStatementCount[userLinkSql] == 1);
+    CHECK(db.preparedStatementCount[statusSql] == 1);
+    CHECK(db.preparedStatementCount[mailSql] == 1);
+
+    auto avatar = MakeAvatar(7, 99, u"Cache Test");
+    service.RecordAvatarLogin(avatar);
+    service.RecordAvatarLogout(avatar);
+
+    PersistentMessage message;
+    message.header.messageId = 1;
+    message.header.status = PersistentState::UNREAD;
+    service.RecordPersistentMessage(avatar, message);
+
+    CHECK(db.preparedStatementCount[userLinkSql] == 1);
+    CHECK(db.preparedStatementCount[statusSql] == 1);
+    CHECK(db.preparedStatementCount[mailSql] == 1);
+}
