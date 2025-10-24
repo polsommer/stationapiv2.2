@@ -6,6 +6,8 @@
 
 #include "easylogging++.h"
 
+#include <stdexcept>
+
 ChatRoomService::ChatRoomService(ChatAvatarService* avatarService, MariaDBConnection* db)
     : avatarService_{avatarService}
     , db_{db} {}
@@ -33,31 +35,32 @@ void ChatRoomService::LoadRoomsFromStorage(const std::u16string& baseAddress) {
 
     while (mariadb_step(stmt) == MARIADB_ROW) {
         auto room = std::make_unique<ChatRoom>();
-        std::string tmp;
         room->roomId_ = nextRoomId_++;
         room->dbId_ = mariadb_column_int(stmt, 0);
         room->creatorId_ = mariadb_column_int(stmt, 1);
 
-        tmp = std::string(reinterpret_cast<const char*>(mariadb_column_text(stmt, 2)));
-        room->creatorName_ = std::u16string{std::begin(tmp), std::end(tmp)};
+        auto readWideColumn = [&](int columnIndex, const char* columnName) -> std::u16string {
+            try {
+                auto value = NullableUtf8ToWide(mariadb_column_text(stmt, columnIndex));
+                if (!value) {
+                    LOG(ERROR) << "Column '" << columnName << "' returned NULL while loading rooms.";
+                    throw std::runtime_error(std::string{"Column '"} + columnName + "' returned NULL");
+                }
 
-        tmp = std::string(reinterpret_cast<const char*>(mariadb_column_text(stmt, 3)));
-        room->creatorAddress_ = std::u16string{std::begin(tmp), std::end(tmp)};
+                return std::move(*value);
+            } catch (const std::range_error& ex) {
+                LOG(ERROR) << "Failed to convert column '" << columnName << "' from UTF-8: " << ex.what();
+                throw std::runtime_error(std::string{"Invalid UTF-8 sequence in column '"} + columnName + "'");
+            }
+        };
 
-        tmp = std::string(reinterpret_cast<const char*>(mariadb_column_text(stmt, 4)));
-        room->roomName_ = std::u16string{std::begin(tmp), std::end(tmp)};
-
-        tmp = std::string(reinterpret_cast<const char*>(mariadb_column_text(stmt, 5)));
-        room->roomTopic_ = std::u16string{std::begin(tmp), std::end(tmp)};
-
-        tmp = std::string(reinterpret_cast<const char*>(mariadb_column_text(stmt, 6)));
-        room->roomPassword_ = std::u16string{std::begin(tmp), std::end(tmp)};
-
-        tmp = std::string(reinterpret_cast<const char*>(mariadb_column_text(stmt, 7)));
-        room->roomPrefix_ = std::u16string{std::begin(tmp), std::end(tmp)};
-
-        tmp = std::string(reinterpret_cast<const char*>(mariadb_column_text(stmt, 8)));
-        room->roomAddress_ = std::u16string{std::begin(tmp), std::end(tmp)};
+        room->creatorName_ = readWideColumn(2, "creator_name");
+        room->creatorAddress_ = readWideColumn(3, "creator_address");
+        room->roomName_ = readWideColumn(4, "room_name");
+        room->roomTopic_ = readWideColumn(5, "room_topic");
+        room->roomPassword_ = readWideColumn(6, "room_password");
+        room->roomPrefix_ = readWideColumn(7, "room_prefix");
+        room->roomAddress_ = readWideColumn(8, "room_address");
 
         room->roomAttributes_ = mariadb_column_int(stmt, 9);
         room->maxRoomSize_ = mariadb_column_int(stmt, 10);
