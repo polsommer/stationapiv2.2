@@ -1,5 +1,6 @@
 include_directories(${PROJECT_SOURCE_DIR}/externals/catch
-    ${PROJECT_SOURCE_DIR}/src)
+    ${PROJECT_SOURCE_DIR}/src
+    ${PROJECT_SOURCE_DIR}/src/stationapi)
 
 add_executable(stationapi_tests
     main.cpp
