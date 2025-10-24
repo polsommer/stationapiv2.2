@@ -43,11 +43,29 @@ if [[ -n "${RUN_LINK}" ]]; then
   if [[ -e "${RUN_LINK}" && ! -L "${RUN_LINK}" ]]; then
     echo "Warning: ${RUN_LINK} exists and is not a symlink; skipping creation of chat run link." >&2
   else
-    if ln -sfn "${INSTALL_PREFIX}" "${RUN_LINK}"; then
-      RUN_LOCATION="${RUN_LINK}"
-      echo "Linked ${RUN_LINK} -> ${INSTALL_PREFIX}"
-    else
-      echo "Warning: unable to create ${RUN_LINK} -> ${INSTALL_PREFIX}. Create the link manually if desired." >&2
+    RUN_LINK_PARENT="$(dirname "${RUN_LINK}")"
+    CAN_CREATE_LINK=1
+    if [[ ! -d "${RUN_LINK_PARENT}" ]]; then
+      if mkdir -p "${RUN_LINK_PARENT}" 2>/dev/null; then
+        :
+      else
+        echo "Warning: ${RUN_LINK_PARENT} does not exist and could not be created; skipping creation of chat run link." >&2
+        CAN_CREATE_LINK=0
+      fi
+    fi
+    if (( CAN_CREATE_LINK )); then
+      if [[ ! -w "${RUN_LINK_PARENT}" ]]; then
+        echo "Info: ${RUN_LINK_PARENT} is not writable; skipping creation of ${RUN_LINK}." >&2
+        CAN_CREATE_LINK=0
+      fi
+    fi
+    if (( CAN_CREATE_LINK )); then
+      if ln -sfn "${INSTALL_PREFIX}" "${RUN_LINK}"; then
+        RUN_LOCATION="${RUN_LINK}"
+        echo "Linked ${RUN_LINK} -> ${INSTALL_PREFIX}"
+      else
+        echo "Warning: unable to create ${RUN_LINK} -> ${INSTALL_PREFIX}. Create the link manually if desired." >&2
+      fi
     fi
   fi
 fi
