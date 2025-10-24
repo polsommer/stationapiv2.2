@@ -156,29 +156,29 @@ StationChatConfig BuildConfiguration(int argc, const char* argv[]) {
 
     po::options_description options("Configuration");
     options.add_options()
-        ("gateway_address", po::value<std::string>(&config.gatewayAddress)->default_value("127.0.0.1"),
+        ("gateway_address", po::value<std::string>(&config.gatewayAddress)->default_value("192.168.88.6"),
             "address for gateway connections")
         ("gateway_port", po::value<uint16_t>(&config.gatewayPort)->default_value(5001),
             "port for gateway connections")
-        ("registrar_address", po::value<std::string>(&config.registrarAddress)->default_value("127.0.0.1"),
+        ("registrar_address", po::value<std::string>(&config.registrarAddress)->default_value("192.168.88.6"),
             "address for registrar connections")
         ("registrar_port", po::value<uint16_t>(&config.registrarPort)->default_value(5000),
             "port for registrar connections")
         ("bind_to_ip", po::value<bool>(&config.bindToIp)->default_value(false),
             "when set to true, binds to the config address; otherwise, binds on any interface")
-        ("database_host", po::value<std::string>(&config.chatDatabaseHost)->default_value("127.0.0.1"),
+        ("database_host", po::value<std::string>(&config.chatDatabaseHost)->default_value("mysql73.unoeuro.com"),
             "hostname or IP address of the MariaDB server")
         ("database_port", po::value<uint16_t>(&config.chatDatabasePort)->default_value(3306),
             "port for the MariaDB server")
-        ("database_user", po::value<std::string>(&config.chatDatabaseUser)->default_value("stationchat"),
+        ("database_user", po::value<std::string>(&config.chatDatabaseUser)->default_value("swgplus_com"),
             "username used to connect to MariaDB")
         ("database_password", po::value<std::string>(&config.chatDatabasePassword)->default_value(""),
             "password used to connect to MariaDB")
-        ("database_schema", po::value<std::string>(&config.chatDatabaseSchema)->default_value("stationchat"),
+        ("database_schema", po::value<std::string>(&config.chatDatabaseSchema)->default_value("swgplus_com_db"),
             "schema (database) name used by stationchat")
         ("database_socket", po::value<std::string>(&config.chatDatabaseSocket)->default_value(""),
             "optional UNIX socket path for local MariaDB connections")
-        ("website_integration_enabled", po::value<bool>(&config.websiteIntegration.enabled)->default_value(false),
+        ("website_integration_enabled", po::value<bool>(&config.websiteIntegration.enabled)->default_value(true),
             "when true, publishes chat status information for consumption by the website")
         ("website_user_link_table", po::value<std::string>(&config.websiteIntegration.userLinkTable)->default_value("web_user_avatar"),
             "table used to associate chat avatars with website accounts")
@@ -188,15 +188,15 @@ StationChatConfig BuildConfiguration(int argc, const char* argv[]) {
             "table used to expose persistent mail to the website")
         ("website_use_separate_database", po::value<bool>(&config.websiteIntegration.useSeparateDatabase)->default_value(false),
             "when true, uses a dedicated database connection for the website integration")
-        ("website_database_host", po::value<std::string>(&config.websiteIntegration.databaseHost)->default_value(""),
+        ("website_database_host", po::value<std::string>(&config.websiteIntegration.databaseHost)->default_value("mysql73.unoeuro.com"),
             "optional override for the website integration database host")
-        ("website_database_port", po::value<uint16_t>(&config.websiteIntegration.databasePort)->default_value(0),
+        ("website_database_port", po::value<uint16_t>(&config.websiteIntegration.databasePort)->default_value(3306),
             "optional override for the website integration database port")
-        ("website_database_user", po::value<std::string>(&config.websiteIntegration.databaseUser)->default_value(""),
+        ("website_database_user", po::value<std::string>(&config.websiteIntegration.databaseUser)->default_value("swgplus_com"),
             "optional override for the website integration database user")
         ("website_database_password", po::value<std::string>(&config.websiteIntegration.databasePassword)->default_value(""),
             "optional override for the website integration database password")
-        ("website_database_schema", po::value<std::string>(&config.websiteIntegration.databaseSchema)->default_value(""),
+        ("website_database_schema", po::value<std::string>(&config.websiteIntegration.databaseSchema)->default_value("swgplus_com_db"),
             "optional override for the website integration database schema")
         ("website_database_socket", po::value<std::string>(&config.websiteIntegration.databaseSocket)->default_value(""),
             "optional override for the website integration database socket path")
