@@ -18,18 +18,21 @@ public:
         : node_{node}
     {
 
-        UdpManager::Params params;
+        UdpManager::Params params{};
         params.handler = this;
         params.port = listenPort;
 
         if (bindToIp)
         {
-            if (listenAddress.length() > sizeof(params.bindIpAddress))
+            // Leave room for the null terminator so that the UDP library receives
+            // a properly terminated C-string.
+            if (listenAddress.length() >= sizeof(params.bindIpAddress))
             {
                 throw std::runtime_error{"Invalid bind ip specified: " + listenAddress};
             }
 
-            std::copy(std::begin(listenAddress), std::end(listenAddress), params.bindIpAddress);
+            std::fill_n(params.bindIpAddress, sizeof(params.bindIpAddress), '\0');
+            std::copy_n(listenAddress.data(), listenAddress.length(), params.bindIpAddress);
         }
 
         udpManager_ = new UdpManager(&params);
