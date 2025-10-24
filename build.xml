@@ -14,9 +14,9 @@
 
     <target name="require-udplibrary">
         <fail unless="udplibrary.present">
-            Missing externals/udplibrary. Copy the proprietary udplibrary from the
-            original SWG source into externals/udplibrary before running this
-            target.
+            Missing externals/udplibrary. Restore the bundled open-source stub or
+            copy the proprietary udplibrary from the original SWG source into
+            externals/udplibrary before running this target.
         </fail>
     </target>
 
