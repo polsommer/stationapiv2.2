@@ -1,6 +1,6 @@
 #pragma once
 
-#include "stationapi/MariaDB.hpp"
+#include "MariaDB.hpp"
 
 #include <optional>
 #include <string>
