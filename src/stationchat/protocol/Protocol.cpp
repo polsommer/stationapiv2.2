@@ -474,7 +474,9 @@ LogoutAvatar::LogoutAvatar(GatewayClient* client, const RequestType& request, Re
 
     auto avatar = avatarService_->GetAvatar(request.avatarId);
     if (!avatar) {
-        throw ChatResultException{ChatResultCode::SRCAVATARDOESNTEXIST, std::to_string(request.avatarId).c_str()};
+        LOG(WARNING) << "LOGOUTAVATAR ignored for unknown avatar id:" << request.avatarId;
+        response.result = ChatResultCode::SUCCESS;
+        return;
     }
 
     for (auto room : roomService_->GetJoinedRooms(avatar)) {
