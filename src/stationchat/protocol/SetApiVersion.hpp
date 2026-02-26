@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include "stationchat/ChatEnums.hpp"
+#include "ChatEnums.hpp"
 
 class ChatAvatarService;
 class ChatRoomService;
