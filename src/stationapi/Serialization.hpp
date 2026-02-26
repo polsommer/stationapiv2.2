@@ -46,18 +46,15 @@ bool GetSerializationByteSwap(StreamT& stream) {
 
 template <typename T>
 constexpr T ByteSwapIntegral(T value) {
-    if constexpr (sizeof(T) == 1) {
-        return value;
-    } else {
-        using UnsignedT = typename std::make_unsigned<T>::type;
-        auto input = static_cast<UnsignedT>(value);
-        UnsignedT output = 0;
-        for (size_t i = 0; i < sizeof(T); ++i) {
-            output = static_cast<UnsignedT>((output << 8) | (input & 0xFFu));
-            input >>= 8;
-        }
-        return static_cast<T>(output);
+    using UnsignedT = typename std::make_unsigned<T>::type;
+    auto input = static_cast<UnsignedT>(value);
+    UnsignedT output = 0;
+    for (size_t i = 0; i < sizeof(T); ++i) {
+        output = static_cast<UnsignedT>((output << 8) | (input & 0xFFu));
+        input >>= 8;
     }
+
+    return static_cast<T>(output);
 }
 
 // integral types
@@ -147,7 +144,7 @@ void read(StreamT& istream, std::string& value) {
         return;
     }
 
-    istream.read(value.data(), length);
+    istream.read(&value[0], length);
 }
 
 template <typename StreamT>
