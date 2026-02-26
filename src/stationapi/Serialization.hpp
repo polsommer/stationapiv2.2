@@ -2,8 +2,41 @@
 #pragma once
 
 #include <cstdint>
+#include <ios>
 #include <string>
 #include <type_traits>
+
+
+inline int SerializationByteSwapFlagIndex() {
+    static const int index = std::ios_base::xalloc();
+    return index;
+}
+
+template <typename StreamT>
+void SetSerializationByteSwap(StreamT& stream, bool enabled) {
+    stream.iword(SerializationByteSwapFlagIndex()) = enabled ? 1 : 0;
+}
+
+template <typename StreamT>
+bool GetSerializationByteSwap(StreamT& stream) {
+    return stream.iword(SerializationByteSwapFlagIndex()) != 0;
+}
+
+template <typename T>
+constexpr T ByteSwapIntegral(T value) {
+    if constexpr (sizeof(T) == 1) {
+        return value;
+    } else {
+        using UnsignedT = typename std::make_unsigned<T>::type;
+        auto input = static_cast<UnsignedT>(value);
+        UnsignedT output = 0;
+        for (size_t i = 0; i < sizeof(T); ++i) {
+            output = static_cast<UnsignedT>((output << 8) | (input & 0xFFu));
+            input >>= 8;
+        }
+        return static_cast<T>(output);
+    }
+}
 
 // integral types
 
@@ -11,26 +44,39 @@ template <typename StreamT, typename T,
     typename std::enable_if_t<std::is_integral<T>::value, int> = 0>
 void read(StreamT& istream, T& value) {
     istream.read(reinterpret_cast<char*>(&value), sizeof(T));
+
+    if (GetSerializationByteSwap(istream)) {
+        value = ByteSwapIntegral(value);
+    }
 }
 
 template <typename StreamT, typename T,
     typename std::enable_if_t<std::is_integral<T>::value, int> = 0>
 void write(StreamT& ostream, const T& value) {
-    ostream.write(reinterpret_cast<const char*>(&value), sizeof(T));
+    T serializedValue = value;
+    if (GetSerializationByteSwap(ostream)) {
+        serializedValue = ByteSwapIntegral(serializedValue);
+    }
+
+    ostream.write(reinterpret_cast<const char*>(&serializedValue), sizeof(T));
 }
 
 // enumeration types with integral underlying types
 
 template <typename StreamT, typename T,
     typename std::enable_if_t<std::is_enum<T>::value, int> = 0>
-    void read(StreamT& istream, T& value) {
-    istream.read(reinterpret_cast<char*>(&value), sizeof(T));
+void read(StreamT& istream, T& value) {
+    using RawT = typename std::underlying_type<T>::type;
+    RawT raw;
+    read(istream, raw);
+    value = static_cast<T>(raw);
 }
 
 template <typename StreamT, typename T,
     typename std::enable_if_t<std::is_enum<T>::value, int> = 0>
-    void write(StreamT& ostream, const T& value) {
-    ostream.write(reinterpret_cast<const char*>(&value), sizeof(T));
+void write(StreamT& ostream, const T& value) {
+    using RawT = typename std::underlying_type<T>::type;
+    write(ostream, static_cast<RawT>(value));
 }
 
 // boolean types
@@ -78,7 +124,7 @@ void read(StreamT& istream, std::u16string& value) {
     value.resize(length);
     uint16_t tmp;
     for (uint32_t i = 0; i < length; ++i) {
-        istream.read(reinterpret_cast<char*>(&tmp), sizeof(uint16_t));
+        read(istream, tmp);
         value[i] = tmp;
     }
 }
@@ -91,7 +137,7 @@ void write(StreamT& ostream, const std::u16string& value) {
     uint16_t tmp;
     for (uint32_t i = 0; i < length; ++i) {
         tmp = static_cast<uint16_t>(value[i]);
-        ostream.write(reinterpret_cast<const char*>(&tmp), sizeof(uint16_t));
+        write(ostream, tmp);
     }
 }
 

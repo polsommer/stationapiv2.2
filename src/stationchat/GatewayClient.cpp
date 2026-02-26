@@ -7,6 +7,7 @@
 #include "GatewayNode.hpp"
 #include "Message.hpp"
 #include "PersistentMessageService.hpp"
+#include "Serialization.hpp"
 #include "MariaDB.hpp"
 #include "StationChatConfig.hpp"
 #include "UdpLibrary.hpp"
@@ -76,6 +77,9 @@ void GatewayClient::OnIncoming(std::istringstream& istream) {
                      << static_cast<uint16_t>(request_type) << " -> "
                      << static_cast<uint16_t>(normalized_request_type);
     }
+
+    SetSerializationByteSwap(istream, was_byteswapped);
+    SetConnectionByteSwap(was_byteswapped);
 
     switch (normalized_request_type) {
     case ChatRequestType::LOGINAVATAR:

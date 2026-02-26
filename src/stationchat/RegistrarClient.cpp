@@ -41,6 +41,9 @@ void RegistrarClient::OnIncoming(std::istringstream& istream) {
                      << static_cast<uint16_t>(normalized_request_type);
     }
 
+    SetSerializationByteSwap(istream, was_byteswapped);
+    SetConnectionByteSwap(was_byteswapped);
+
     switch (normalized_request_type) {
     case ChatRequestType::REGISTRAR_GETCHATSERVER: {
         auto request = ::read<ReqRegistrarGetChatServer>(istream);
