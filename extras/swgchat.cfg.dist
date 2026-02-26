@@ -1,17 +1,20 @@
-# Address that the gateway server will listen for connections on
-gateway_address = 192.168.88.6
+# Address advertised for gateway connections.
+# Set this explicitly for production deployments (LAN/public IP or DNS name).
+gateway_address = 0.0.0.0
 
 # Port the gateway server will listen for connections on
 gateway_port = 5001
 
-# Address that the registrar server will listen for connections on
-registrar_address = 192.168.88.6
+# Address advertised for registrar connections.
+# Set this explicitly for production deployments (LAN/public IP or DNS name).
+registrar_address = 0.0.0.0
 
 # Port the registrar server will listen for connections on
 registrar_port = 5000
 
-# MariaDB connection information
-database_host = mysql73.unoeuro.com
+# MariaDB connection information.
+# Production deployments must set these explicitly.
+database_host = 127.0.0.1
 database_port = 3306
 database_user = swgplus_com
 database_password = 
@@ -36,7 +39,7 @@ website_use_separate_database = false
 
 # Optional database overrides for the website integration. Leave empty (or zero for the port)
 # to reuse the chat database connection settings defined above.
-website_database_host = mysql73.unoeuro.com
+website_database_host = 127.0.0.1
 website_database_port = 3306
 website_database_user = swgplus_com
 website_database_password =

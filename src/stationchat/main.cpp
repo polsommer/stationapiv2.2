@@ -5,6 +5,7 @@
 #include "StationChatApp.hpp"
 
 #include <boost/algorithm/string.hpp>
+#include <boost/asio/ip/address.hpp>
 #include <boost/program_options.hpp>
 
 #include <chrono>
@@ -13,6 +14,7 @@
 #include <iostream>
 #include <limits>
 #include <stdexcept>
+#include <sstream>
 #include <thread>
 #include <vector>
 
@@ -25,6 +27,47 @@ INITIALIZE_EASYLOGGINGPP
 StationChatConfig BuildConfiguration(int argc, const char* argv[]);
 
 namespace {
+
+std::string FormatDatabaseTarget(const StationChatConfig& config) {
+    std::ostringstream stream;
+    stream << "host=" << (config.chatDatabaseHost.empty() ? "<empty>" : config.chatDatabaseHost)
+           << ";port=" << config.chatDatabasePort
+           << ";socket=" << (config.chatDatabaseSocket.empty() ? "<none>" : config.chatDatabaseSocket);
+    return stream.str();
+}
+
+void ValidateBindableAddress(const std::string& value, const char* key) {
+    auto trimmedValue = boost::algorithm::trim_copy(value);
+    if (trimmedValue.empty()) {
+        throw std::runtime_error(std::string{"Invalid configuration: "} + key + " cannot be empty when bind_to_ip=true");
+    }
+
+    boost::system::error_code error;
+    boost::asio::ip::make_address(trimmedValue, error);
+    if (error) {
+        throw std::runtime_error(std::string{"Invalid configuration: "} + key
+            + " must be a valid IP address when bind_to_ip=true (got '" + trimmedValue + "')");
+    }
+}
+
+void ValidateNonZeroPort(uint16_t value, const char* key) {
+    if (value == 0) {
+        throw std::runtime_error(std::string{"Invalid configuration: "} + key + " must be greater than zero");
+    }
+}
+
+void LogStartupConfigurationSummary(const StationChatConfig& config) {
+    const auto bindMode = config.bindToIp ? "configured address" : "any interface (0.0.0.0)";
+    const auto gatewayBindAddress = config.bindToIp ? config.gatewayAddress : "0.0.0.0";
+    const auto registrarBindAddress = config.bindToIp ? config.registrarAddress : "0.0.0.0";
+
+    LOG(INFO) << "Startup configuration summary:";
+    LOG(INFO) << "  Gateway bind=" << gatewayBindAddress << ":" << config.gatewayPort
+              << " (mode=" << bindMode << "), advertised=" << config.gatewayAddress << ":" << config.gatewayPort;
+    LOG(INFO) << "  Registrar bind=" << registrarBindAddress << ":" << config.registrarPort
+              << " (mode=" << bindMode << "), advertised=" << config.registrarAddress << ":" << config.registrarPort;
+    LOG(INFO) << "  Database target=" << FormatDatabaseTarget(config);
+}
 
 GatewayClusterEndpoint ParseGatewayClusterEndpoint(const std::string& definition) {
     using boost::algorithm::trim_copy;
@@ -127,6 +170,8 @@ int main(int argc, const char* argv[]) {
     el::Loggers::setDefaultConfigurations(config.loggerConfig, true);
     START_EASYLOGGINGPP(argc, argv);
 
+    LogStartupConfigurationSummary(config);
+
     StationChatApp app{config};
 
     while (app.IsRunning()) {
@@ -156,17 +201,17 @@ StationChatConfig BuildConfiguration(int argc, const char* argv[]) {
 
     po::options_description options("Configuration");
     options.add_options()
-        ("gateway_address", po::value<std::string>(&config.gatewayAddress)->default_value("192.168.88.6"),
+        ("gateway_address", po::value<std::string>(&config.gatewayAddress)->default_value("0.0.0.0"),
             "address for gateway connections")
         ("gateway_port", po::value<uint16_t>(&config.gatewayPort)->default_value(5001),
             "port for gateway connections")
-        ("registrar_address", po::value<std::string>(&config.registrarAddress)->default_value("192.168.88.6"),
+        ("registrar_address", po::value<std::string>(&config.registrarAddress)->default_value("0.0.0.0"),
             "address for registrar connections")
         ("registrar_port", po::value<uint16_t>(&config.registrarPort)->default_value(5000),
             "port for registrar connections")
         ("bind_to_ip", po::value<bool>(&config.bindToIp)->default_value(false),
             "when set to true, binds to the config address; otherwise, binds on any interface")
-        ("database_host", po::value<std::string>(&config.chatDatabaseHost)->default_value("mysql73.unoeuro.com"),
+        ("database_host", po::value<std::string>(&config.chatDatabaseHost)->default_value("127.0.0.1"),
             "hostname or IP address of the MariaDB server")
         ("database_port", po::value<uint16_t>(&config.chatDatabasePort)->default_value(3306),
             "port for the MariaDB server")
@@ -188,7 +233,7 @@ StationChatConfig BuildConfiguration(int argc, const char* argv[]) {
             "table used to expose persistent mail to the website")
         ("website_use_separate_database", po::value<bool>(&config.websiteIntegration.useSeparateDatabase)->default_value(false),
             "when true, uses a dedicated database connection for the website integration")
-        ("website_database_host", po::value<std::string>(&config.websiteIntegration.databaseHost)->default_value("mysql73.unoeuro.com"),
+        ("website_database_host", po::value<std::string>(&config.websiteIntegration.databaseHost)->default_value("127.0.0.1"),
             "optional override for the website integration database host")
         ("website_database_port", po::value<uint16_t>(&config.websiteIntegration.databasePort)->default_value(3306),
             "optional override for the website integration database port")
@@ -242,6 +287,19 @@ StationChatConfig BuildConfiguration(int argc, const char* argv[]) {
     }
 
     config.NormalizeClusterGateways();
+
+    ValidateNonZeroPort(config.gatewayPort, "gateway_port");
+    ValidateNonZeroPort(config.registrarPort, "registrar_port");
+    ValidateNonZeroPort(config.chatDatabasePort, "database_port");
+
+    if (config.websiteIntegration.useSeparateDatabase) {
+        ValidateNonZeroPort(config.websiteIntegration.databasePort, "website_database_port");
+    }
+
+    if (config.bindToIp) {
+        ValidateBindableAddress(config.gatewayAddress, "gateway_address");
+        ValidateBindableAddress(config.registrarAddress, "registrar_address");
+    }
 
     return config;
 }
