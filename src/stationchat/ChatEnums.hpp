@@ -249,4 +249,33 @@ struct ChatResultException {
         , message{text} {}
 };
 
+constexpr uint16_t ByteSwap16(uint16_t value) {
+    return static_cast<uint16_t>((value >> 8) | (value << 8));
+}
+
+constexpr bool IsKnownChatRequestTypeCode(uint16_t code) {
+    return code <= static_cast<uint16_t>(ChatRequestType::FILTERMESSAGE_EX)
+        || code == static_cast<uint16_t>(ChatRequestType::REGISTRAR_GETCHATSERVER);
+}
+
+inline bool TryNormalizeChatRequestType(
+    ChatRequestType requestType, ChatRequestType& normalizedType, bool& byteswapped) {
+    const auto requestCode = static_cast<uint16_t>(requestType);
+    if (IsKnownChatRequestTypeCode(requestCode)) {
+        normalizedType = requestType;
+        byteswapped = false;
+        return true;
+    }
+
+    const auto swappedCode = ByteSwap16(requestCode);
+    if (IsKnownChatRequestTypeCode(swappedCode)) {
+        normalizedType = static_cast<ChatRequestType>(swappedCode);
+        byteswapped = true;
+        return true;
+    }
+
+    byteswapped = false;
+    return false;
+}
+
 const char* ToString(ChatResultCode code);
