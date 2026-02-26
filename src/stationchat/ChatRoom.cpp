@@ -194,7 +194,7 @@ void ChatRoom::AddAdministrator(uint32_t srcAvatarId, ChatAvatar* administrator)
         administrators_.push_back(administrator);
 
         if (IsPersistent()) {
-            roomService_->PersistBanned(administrator->GetAvatarId(), roomId_);
+            roomService_->PersistAdministrator(administrator->GetAvatarId(), dbId_);
         }
     }
 }
@@ -211,7 +211,7 @@ void ChatRoom::AddModerator(uint32_t srcAvatarId, ChatAvatar* moderator) {
     moderators_.push_back(moderator);
 
     if (IsPersistent()) {
-        roomService_->PersistBanned(moderator->GetAvatarId(), roomId_);
+        roomService_->PersistModerator(moderator->GetAvatarId(), dbId_);
     }
 }
 
@@ -227,7 +227,7 @@ void ChatRoom::AddBanned(uint32_t srcAvatarId, ChatAvatar* banned) {
     banned_.push_back(banned);
 
     if (IsPersistent()) {
-        roomService_->PersistBanned(banned->GetAvatarId(), roomId_);
+        roomService_->PersistBanned(banned->GetAvatarId(), dbId_);
     }
 }
 
@@ -255,7 +255,7 @@ void ChatRoom::RemoveAdministrator(uint32_t srcAvatarId, uint32_t avatarId) {
         [avatarId](auto administrator) { return administrator->GetAvatarId() == avatarId; }));
 
     if (IsPersistent()) {
-        roomService_->DeleteAdministrator(avatarId, roomId_);
+        roomService_->DeleteAdministrator(avatarId, dbId_);
     }
 }
 
@@ -272,7 +272,7 @@ void ChatRoom::RemoveModerator(uint32_t srcAvatarId, uint32_t avatarId) {
         [avatarId](auto moderator) { return moderator->GetAvatarId() == avatarId; }));
 
     if (IsPersistent()) {
-        roomService_->DeleteModerator(avatarId, roomId_);
+        roomService_->DeleteModerator(avatarId, dbId_);
     }
 }
 
@@ -289,7 +289,7 @@ void ChatRoom::RemoveBanned(uint32_t srcAvatarId, uint32_t avatarId) {
         [avatarId](auto banned) { return banned->GetAvatarId() == avatarId; }));
 
     if (IsPersistent()) {
-        roomService_->DeleteBanned(avatarId, roomId_);
+        roomService_->DeleteBanned(avatarId, dbId_);
     }
 }
 
