@@ -473,6 +473,9 @@ LogoutAvatar::LogoutAvatar(GatewayClient* client, const RequestType& request, Re
     LOG(INFO) << "LOGOUTAVATAR request received - avatar id:" << request.avatarId;
 
     auto avatar = avatarService_->GetAvatar(request.avatarId);
+    if (!avatar) {
+        throw ChatResultException{ChatResultCode::SRCAVATARDOESNTEXIST, std::to_string(request.avatarId).c_str()};
+    }
 
     for (auto room : roomService_->GetJoinedRooms(avatar)) {
         auto addresses = room->GetConnectedAddresses();
