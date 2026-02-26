@@ -58,9 +58,26 @@ GatewayClient::GatewayClient(UdpConnection* connection, GatewayNode* node)
 GatewayClient::~GatewayClient() {}
 
 void GatewayClient::OnIncoming(std::istringstream& istream) {
-    ChatRequestType request_type = ::read<ChatRequestType>(istream);
+    if (istream.rdbuf()->in_avail() < static_cast<std::streamsize>(sizeof(ChatRequestType))) {
+        LOG(WARNING) << "Dropping gateway packet: payload too short for request type";
+        return;
+    }
 
-    switch (request_type) {
+    ChatRequestType request_type = ::read<ChatRequestType>(istream);
+    ChatRequestType normalized_request_type;
+    bool was_byteswapped = false;
+    if (!TryNormalizeChatRequestType(request_type, normalized_request_type, was_byteswapped)) {
+        LOG(INFO) << "Unknown request type received: " << static_cast<uint16_t>(request_type);
+        return;
+    }
+
+    if (was_byteswapped) {
+        LOG(WARNING) << "Gateway request type required byte swap: "
+                     << static_cast<uint16_t>(request_type) << " -> "
+                     << static_cast<uint16_t>(normalized_request_type);
+    }
+
+    switch (normalized_request_type) {
     case ChatRequestType::LOGINAVATAR:
         HandleIncomingMessage<LoginAvatar>(istream);
         break;
@@ -158,7 +175,8 @@ void GatewayClient::OnIncoming(std::istringstream& istream) {
         HandleIncomingMessage<GetAnyAvatar>(istream);
         break;
     default:
-        LOG(INFO) << "Unknown request type received: " << static_cast<uint16_t>(request_type);
+        LOG(INFO) << "Unknown request type received after normalization: "
+                  << static_cast<uint16_t>(normalized_request_type);
         break;
     }
 }
