@@ -9,6 +9,8 @@
 #include <utility>
 #include <vector>
 
+class LoginAuthValidator;
+
 struct GatewayClusterEndpoint {
     std::string address;
     uint16_t port{0};
@@ -64,9 +66,15 @@ struct StationChatConfig {
         return stream.str();
     }
 
-    // Maintain compatibility with existing Star Wars Galaxies chat clients,
-    // which expect protocol version 2 during the SETAPIVERSION handshake.
-    const uint32_t version = 2;
+    static constexpr uint32_t kLegacyApiVersion = 2;
+    static constexpr uint32_t kEnhancedApiVersion = 3;
+    static constexpr uint32_t kCapabilityMaskForV3 = 0x1;
+
+    uint32_t apiMinVersion{kLegacyApiVersion};
+    uint32_t apiMaxVersion{kEnhancedApiVersion};
+    // Keep version 2 as the default for compatibility unless explicitly configured.
+    uint32_t apiDefaultVersion{kLegacyApiVersion};
+    bool allowLegacyLogin{true};
     std::string gatewayAddress{"0.0.0.0"};
     uint16_t gatewayPort{5001};
     std::string registrarAddress{"0.0.0.0"};
@@ -80,7 +88,40 @@ struct StationChatConfig {
     std::string loggerConfig;
     bool bindToIp{false};
     WebsiteIntegrationConfig websiteIntegration;
+    const LoginAuthValidator* loginAuthValidator{nullptr};
     std::vector<GatewayClusterEndpoint> gatewayCluster;
+
+    bool SupportsApiVersion(uint32_t version) const {
+        return version >= apiMinVersion && version <= apiMaxVersion;
+    }
+
+    uint32_t ResolveApiVersionForClient(uint32_t clientVersion) const {
+        if (clientVersion == kEnhancedApiVersion && SupportsApiVersion(kEnhancedApiVersion)) {
+            return kEnhancedApiVersion;
+        }
+
+        if (clientVersion == kLegacyApiVersion && SupportsApiVersion(kLegacyApiVersion)) {
+            return kLegacyApiVersion;
+        }
+
+        if (SupportsApiVersion(clientVersion)) {
+            return clientVersion;
+        }
+
+        if (SupportsApiVersion(apiDefaultVersion)) {
+            return apiDefaultVersion;
+        }
+
+        return apiMinVersion;
+    }
+
+    bool ShouldAcceptApiVersion(uint32_t clientVersion) const {
+        return SupportsApiVersion(clientVersion);
+    }
+
+    uint32_t CapabilityMaskForVersion(uint32_t version) const {
+        return version >= kEnhancedApiVersion ? kCapabilityMaskForV3 : 0;
+    }
 
     void NormalizeClusterGateways() {
         for (auto& endpoint : gatewayCluster) {

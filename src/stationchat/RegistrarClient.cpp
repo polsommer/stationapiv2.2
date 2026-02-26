@@ -7,6 +7,7 @@
 #include "StringUtils.hpp"
 
 #include "protocol/RegistrarGetChatServer.hpp"
+#include "RequestFailureHandling.hpp"
 
 #include "easylogging++.h"
 
@@ -194,21 +195,35 @@ void RegistrarClient::OnIncoming(std::istringstream& istream) {
                      << "handling as REGISTRAR_GETCHATSERVER";
         [[fallthrough]];
     case ChatRequestType::REGISTRAR_GETCHATSERVER: {
+        char endpoint[64] = {0};
+        GetConnection()->GetDestinationIp().GetAddress(endpoint);
+        constexpr uint16_t kRegistrarRequestType = static_cast<uint16_t>(ChatRequestType::REGISTRAR_GETCHATSERVER);
+
         ReqRegistrarGetChatServer request{};
         bool payloadByteSwap = was_byteswapped;
         if (!TryReadRegistrarLookupRequest(istream, request, payloadByteSwap)) {
+            LOG(WARNING) << "Registrar handler decode failure"
+                         << " request_type=" << kRegistrarRequestType
+                         << " remote=" << endpoint << ":" << GetConnection()->GetDestinationPort()
+                         << " failure_category=decode";
+            RegistrarGetChatServer::ResponseType response{request.track};
+            response.result = ChatResultCode::INVALID_INPUT;
+            Send(response);
             return;
         }
 
         SetConnectionByteSwap(payloadByteSwap);
 
         RegistrarGetChatServer::ResponseType response{request.track};
-
-        try {
-            RegistrarGetChatServer(this, request, response);
-        } catch (const ChatResultException& e) {
-            response.result = e.code;
-            LOG(ERROR) << "ChatAPI Error: [" << static_cast<uint32_t>(e.code) << "] " << e.message;
+        const auto failureCategory = stationchat::ExecuteHandlerWithFallbacks(
+            response,
+            [&]() { RegistrarGetChatServer(this, request, response); });
+        if (failureCategory != stationchat::FailureCategory::NONE) {
+            LOG(ERROR) << "Registrar handler execution failure"
+                       << " request_type=" << kRegistrarRequestType
+                       << " remote=" << endpoint << ":" << GetConnection()->GetDestinationPort()
+                       << " failure_category=" << stationchat::ToString(failureCategory)
+                       << " result=" << ToString(response.result);
         }
 
         Send(response);

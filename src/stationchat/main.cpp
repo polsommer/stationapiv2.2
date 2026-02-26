@@ -56,6 +56,16 @@ void ValidateNonZeroPort(uint16_t value, const char* key) {
     }
 }
 
+void ValidateApiVersionRange(const StationChatConfig& config) {
+    if (config.apiMinVersion > config.apiMaxVersion) {
+        throw std::runtime_error("Invalid configuration: api_min_version cannot be greater than api_max_version");
+    }
+
+    if (!config.SupportsApiVersion(config.apiDefaultVersion)) {
+        throw std::runtime_error("Invalid configuration: api_default_version must be within api_min_version and api_max_version");
+    }
+}
+
 void LogStartupConfigurationSummary(const StationChatConfig& config) {
     const auto bindMode = config.bindToIp ? "configured address" : "any interface (0.0.0.0)";
     const auto gatewayBindAddress = config.bindToIp ? config.gatewayAddress : "0.0.0.0";
@@ -67,6 +77,10 @@ void LogStartupConfigurationSummary(const StationChatConfig& config) {
     LOG(INFO) << "  Registrar bind=" << registrarBindAddress << ":" << config.registrarPort
               << " (mode=" << bindMode << "), advertised=" << config.registrarAddress << ":" << config.registrarPort;
     LOG(INFO) << "  Database target=" << FormatDatabaseTarget(config);
+    LOG(INFO) << "  API versions: min=" << config.apiMinVersion
+              << ", max=" << config.apiMaxVersion
+              << ", default=" << config.apiDefaultVersion;
+    LOG(INFO) << "  Login auth: allow_legacy_login=" << (config.allowLegacyLogin ? "true" : "false");
 }
 
 GatewayClusterEndpoint ParseGatewayClusterEndpoint(const std::string& definition) {
@@ -223,6 +237,14 @@ StationChatConfig BuildConfiguration(int argc, const char* argv[]) {
             "schema (database) name used by stationchat")
         ("database_socket", po::value<std::string>(&config.chatDatabaseSocket)->default_value(""),
             "optional UNIX socket path for local MariaDB connections")
+        ("api_min_version", po::value<uint32_t>(&config.apiMinVersion)->default_value(StationChatConfig::kLegacyApiVersion),
+            "minimum supported API version for SETAPIVERSION")
+        ("api_max_version", po::value<uint32_t>(&config.apiMaxVersion)->default_value(StationChatConfig::kEnhancedApiVersion),
+            "maximum supported API version for SETAPIVERSION")
+        ("api_default_version", po::value<uint32_t>(&config.apiDefaultVersion)->default_value(StationChatConfig::kLegacyApiVersion),
+            "default API version to advertise when a client does not map to a supported version")
+        ("allow_legacy_login", po::value<bool>(&config.allowLegacyLogin)->default_value(true),
+            "when false, LOGINAVATAR requires v3 proof-of-authentication fields")
         ("website_integration_enabled", po::value<bool>(&config.websiteIntegration.enabled)->default_value(true),
             "when true, publishes chat status information for consumption by the website")
         ("website_user_link_table", po::value<std::string>(&config.websiteIntegration.userLinkTable)->default_value("web_user_avatar"),
@@ -291,6 +313,7 @@ StationChatConfig BuildConfiguration(int argc, const char* argv[]) {
     ValidateNonZeroPort(config.gatewayPort, "gateway_port");
     ValidateNonZeroPort(config.registrarPort, "registrar_port");
     ValidateNonZeroPort(config.chatDatabasePort, "database_port");
+    ValidateApiVersionRange(config);
 
     if (config.websiteIntegration.useSeparateDatabase) {
         ValidateNonZeroPort(config.websiteIntegration.databasePort, "website_database_port");

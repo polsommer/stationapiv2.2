@@ -31,7 +31,8 @@ struct ResSetApiVersion {
     const ChatResponseType type = ChatResponseType::SETAPIVERSION;
     uint32_t track;
     ChatResultCode result;
-    uint32_t version;
+    uint32_t version{0};
+    uint32_t capabilityMask{0};
 };
 
 template <typename StreamT>
@@ -40,6 +41,9 @@ void write(StreamT& ar, const ResSetApiVersion& data) {
     write(ar, data.track);
     write(ar, data.result);
     write(ar, data.version);
+    if (data.version >= 3) {
+        write(ar, data.capabilityMask);
+    }
 }
 
 class SetApiVersion {
