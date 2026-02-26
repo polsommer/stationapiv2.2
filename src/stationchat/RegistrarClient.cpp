@@ -10,51 +10,146 @@
 
 #include "easylogging++.h"
 
+#include <cstring>
+#include <iterator>
+
 namespace {
 
 constexpr uint32_t kMaxRegistrarHostnameLength = 1024;
 
-bool TryReadRegistrarLookupRequest(std::istringstream& istream, ReqRegistrarGetChatServer& request) {
-    auto* buffer = istream.rdbuf();
-    if (buffer->in_avail() < static_cast<std::streamsize>(sizeof(uint32_t))) {
-        LOG(WARNING) << "Dropping registrar packet: payload too short for track";
-        return false;
-    }
+bool TryParseRegistrarLookupPayload(const std::string& payload, bool byteSwap,
+    bool hasTrack, ReqRegistrarGetChatServer& request, bool& consumedAllPayload) {
+    consumedAllPayload = false;
+    size_t cursor = 0;
 
-    read(istream, request.track);
+    const auto readU32 = [&payload, &cursor, byteSwap](uint32_t& value) {
+        if (payload.size() - cursor < sizeof(uint32_t)) {
+            return false;
+        }
 
-    if (buffer->in_avail() == 0) {
+        std::memcpy(&value, payload.data() + cursor, sizeof(uint32_t));
+        if (byteSwap) {
+            value = ByteSwapIntegral(value);
+        }
+
+        cursor += sizeof(uint32_t);
         return true;
-    }
+    };
 
-    if (buffer->in_avail() < static_cast<std::streamsize>(sizeof(uint32_t))) {
-        LOG(WARNING) << "Dropping registrar packet: payload too short for hostname length";
-        return false;
+    const auto readU16 = [&payload, &cursor, byteSwap](uint16_t& value) {
+        if (payload.size() - cursor < sizeof(uint16_t)) {
+            return false;
+        }
+
+        std::memcpy(&value, payload.data() + cursor, sizeof(uint16_t));
+        if (byteSwap) {
+            value = ByteSwapIntegral(value);
+        }
+
+        cursor += sizeof(uint16_t);
+        return true;
+    };
+
+    if (hasTrack) {
+        if (!readU32(request.track)) {
+            return false;
+        }
+
+        if (cursor == payload.size()) {
+            consumedAllPayload = true;
+            return true;
+        }
+    } else {
+        request.track = 0;
     }
 
     uint32_t hostnameLength = 0;
-    read(istream, hostnameLength);
-
-    if (hostnameLength > kMaxRegistrarHostnameLength) {
-        LOG(ERROR) << "Dropping registrar packet: hostname length too large (" << hostnameLength << ")";
+    if (!readU32(hostnameLength)) {
         return false;
     }
 
-    const auto requiredBytes = static_cast<std::streamsize>(hostnameLength * sizeof(uint16_t) + sizeof(uint16_t));
-    if (buffer->in_avail() < requiredBytes) {
-        LOG(WARNING) << "Dropping registrar packet: payload too short for hostname/port";
+    if (hostnameLength > kMaxRegistrarHostnameLength) {
+        return false;
+    }
+
+    const auto requiredBytes = static_cast<size_t>(hostnameLength) * sizeof(uint16_t)
+        + sizeof(uint16_t);
+    if (payload.size() - cursor < requiredBytes) {
         return false;
     }
 
     request.hostname.resize(hostnameLength);
     for (uint32_t index = 0; index < hostnameLength; ++index) {
         uint16_t ch;
-        read(istream, ch);
+        if (!readU16(ch)) {
+            return false;
+        }
+
         request.hostname[index] = ch;
     }
 
-    read(istream, request.port);
+    if (!readU16(request.port)) {
+        return false;
+    }
+
+    consumedAllPayload = (cursor == payload.size());
     return true;
+}
+
+bool TryReadRegistrarLookupRequest(std::istringstream& istream, ReqRegistrarGetChatServer& request, bool& payloadByteSwap) {
+    const auto preferredByteSwap = GetSerializationByteSwap(istream);
+    std::string payload{std::istreambuf_iterator<char>(istream), std::istreambuf_iterator<char>()};
+
+    if (payload.empty()) {
+        LOG(WARNING) << "Dropping registrar packet: payload too short for track";
+        return false;
+    }
+
+    struct ParseAttempt {
+        bool byteSwap;
+        bool hasTrack;
+    };
+
+    const ParseAttempt attempts[] = {
+        {preferredByteSwap, true},
+        {preferredByteSwap, false},
+        {!preferredByteSwap, true},
+        {!preferredByteSwap, false},
+    };
+
+    for (const auto& attempt : attempts) {
+        ReqRegistrarGetChatServer parsedRequest{};
+        bool consumedAllPayload = false;
+        if (!TryParseRegistrarLookupPayload(payload, attempt.byteSwap, attempt.hasTrack,
+                parsedRequest, consumedAllPayload)) {
+            continue;
+        }
+
+        request.track = parsedRequest.track;
+        request.hostname = std::move(parsedRequest.hostname);
+        request.port = parsedRequest.port;
+
+        if (attempt.byteSwap != preferredByteSwap) {
+            LOG(WARNING) << "Parsed registrar packet using alternate payload byte order";
+        }
+
+        payloadByteSwap = attempt.byteSwap;
+
+        if (!attempt.hasTrack) {
+            LOG(WARNING) << "Parsed registrar packet using legacy no-track payload format";
+        }
+
+        if (!consumedAllPayload) {
+            LOG(WARNING) << "Registrar packet contained " << (payload.size())
+                         << " payload bytes; trailing bytes were ignored";
+        }
+
+        return true;
+    }
+
+    LOG(ERROR) << "Dropping registrar packet: unrecognized REGISTRAR_GETCHATSERVER payload format ("
+               << payload.size() << " bytes)";
+    return false;
 }
 
 } // namespace
@@ -100,9 +195,12 @@ void RegistrarClient::OnIncoming(std::istringstream& istream) {
         [[fallthrough]];
     case ChatRequestType::REGISTRAR_GETCHATSERVER: {
         ReqRegistrarGetChatServer request{};
-        if (!TryReadRegistrarLookupRequest(istream, request)) {
+        bool payloadByteSwap = was_byteswapped;
+        if (!TryReadRegistrarLookupRequest(istream, request, payloadByteSwap)) {
             return;
         }
+
+        SetConnectionByteSwap(payloadByteSwap);
 
         RegistrarGetChatServer::ResponseType response{request.track};
 
