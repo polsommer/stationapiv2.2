@@ -83,4 +83,5 @@ private:
     ChatAvatarService* avatarService_;
     ChatRoomService* roomService_;
     PersistentMessageService* messageService_;
+    bool hasLoggedWideRequestTypeCompatibility_ = false;
 };

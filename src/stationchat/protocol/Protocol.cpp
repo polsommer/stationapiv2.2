@@ -48,6 +48,7 @@
 
 #include "easylogging++.h"
 
+
 AddBan::AddBan(GatewayClient* client, const RequestType& request, ResponseType& response)
     : avatarService_{client->GetNode()->GetAvatarService()}
     , roomService_{client->GetNode()->GetRoomService()} {

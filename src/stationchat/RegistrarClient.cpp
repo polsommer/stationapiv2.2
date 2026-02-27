@@ -11,146 +11,42 @@
 
 #include "easylogging++.h"
 
-#include <cstring>
-#include <iterator>
-
 namespace {
 
-constexpr uint32_t kMaxRegistrarHostnameLength = 1024;
+bool TryReadNormalizedRequestType(
+    std::istringstream& istream,
+    ChatRequestType& normalizedRequestType,
+    bool& requestTypeByteSwap,
+    bool& usedWideRequestType) {
+    usedWideRequestType = false;
 
-bool TryParseRegistrarLookupPayload(const std::string& payload, bool byteSwap,
-    bool hasTrack, ReqRegistrarGetChatServer& request, bool& consumedAllPayload) {
-    consumedAllPayload = false;
-    size_t cursor = 0;
+    if (istream.rdbuf()->in_avail() < static_cast<std::streamsize>(sizeof(uint16_t))) {
+        return false;
+    }
 
-    const auto readU32 = [&payload, &cursor, byteSwap](uint32_t& value) {
-        if (payload.size() - cursor < sizeof(uint32_t)) {
-            return false;
-        }
-
-        std::memcpy(&value, payload.data() + cursor, sizeof(uint32_t));
-        if (byteSwap) {
-            value = ByteSwapIntegral(value);
-        }
-
-        cursor += sizeof(uint32_t);
-        return true;
+    const auto canNormalizeCode = [](uint16_t code, ChatRequestType& normalized, bool& swapped) {
+        return TryNormalizeChatRequestType(static_cast<ChatRequestType>(code), normalized, swapped);
     };
 
-    const auto readU16 = [&payload, &cursor, byteSwap](uint16_t& value) {
-        if (payload.size() - cursor < sizeof(uint16_t)) {
-            return false;
-        }
+    if (istream.rdbuf()->in_avail() >= static_cast<std::streamsize>(sizeof(uint32_t))) {
+        const auto lowWord = peekAt<uint16_t>(istream, 0);
+        const auto highWord = peekAt<uint16_t>(istream, sizeof(uint16_t));
 
-        std::memcpy(&value, payload.data() + cursor, sizeof(uint16_t));
-        if (byteSwap) {
-            value = ByteSwapIntegral(value);
-        }
-
-        cursor += sizeof(uint16_t);
-        return true;
-    };
-
-    if (hasTrack) {
-        if (!readU32(request.track)) {
-            return false;
-        }
-
-        if (cursor == payload.size()) {
-            consumedAllPayload = true;
+        if (highWord == 0 && canNormalizeCode(lowWord, normalizedRequestType, requestTypeByteSwap)) {
+            (void)::read<uint32_t>(istream);
+            usedWideRequestType = true;
             return true;
         }
-    } else {
-        request.track = 0;
-    }
 
-    uint32_t hostnameLength = 0;
-    if (!readU32(hostnameLength)) {
-        return false;
-    }
-
-    if (hostnameLength > kMaxRegistrarHostnameLength) {
-        return false;
-    }
-
-    const auto requiredBytes = static_cast<size_t>(hostnameLength) * sizeof(uint16_t)
-        + sizeof(uint16_t);
-    if (payload.size() - cursor < requiredBytes) {
-        return false;
-    }
-
-    request.hostname.resize(hostnameLength);
-    for (uint32_t index = 0; index < hostnameLength; ++index) {
-        uint16_t ch;
-        if (!readU16(ch)) {
-            return false;
+        if (lowWord == 0 && canNormalizeCode(highWord, normalizedRequestType, requestTypeByteSwap)) {
+            (void)::read<uint32_t>(istream);
+            usedWideRequestType = true;
+            return true;
         }
-
-        request.hostname[index] = ch;
     }
 
-    if (!readU16(request.port)) {
-        return false;
-    }
-
-    consumedAllPayload = (cursor == payload.size());
-    return true;
-}
-
-bool TryReadRegistrarLookupRequest(std::istringstream& istream, ReqRegistrarGetChatServer& request, bool& payloadByteSwap) {
-    const auto preferredByteSwap = GetSerializationByteSwap(istream);
-    std::string payload{std::istreambuf_iterator<char>(istream), std::istreambuf_iterator<char>()};
-
-    if (payload.empty()) {
-        LOG(WARNING) << "Dropping registrar packet: payload too short for track";
-        return false;
-    }
-
-    struct ParseAttempt {
-        bool byteSwap;
-        bool hasTrack;
-    };
-
-    const ParseAttempt attempts[] = {
-        {preferredByteSwap, true},
-        {preferredByteSwap, false},
-        {!preferredByteSwap, true},
-        {!preferredByteSwap, false},
-    };
-
-    for (const auto& attempt : attempts) {
-        ReqRegistrarGetChatServer parsedRequest{};
-        bool consumedAllPayload = false;
-        if (!TryParseRegistrarLookupPayload(payload, attempt.byteSwap, attempt.hasTrack,
-                parsedRequest, consumedAllPayload)) {
-            continue;
-        }
-
-        request.track = parsedRequest.track;
-        request.hostname = std::move(parsedRequest.hostname);
-        request.port = parsedRequest.port;
-
-        if (attempt.byteSwap != preferredByteSwap) {
-            LOG(WARNING) << "Parsed registrar packet using alternate payload byte order";
-        }
-
-        payloadByteSwap = attempt.byteSwap;
-
-        if (!attempt.hasTrack) {
-            LOG(WARNING) << "Parsed registrar packet using legacy no-track payload format";
-        }
-
-        if (!consumedAllPayload) {
-            LOG(WARNING) << "Registrar packet contained " << (payload.size())
-                         << " payload bytes; trailing bytes were ignored";
-        }
-
-        return true;
-    }
-
-    LOG(ERROR) << "Dropping registrar packet: unrecognized REGISTRAR_GETCHATSERVER payload format ("
-               << payload.size() << " bytes)";
-    return false;
+    const auto narrowType = ::read<uint16_t>(istream);
+    return canNormalizeCode(narrowType, normalizedRequestType, requestTypeByteSwap);
 }
 
 } // namespace
@@ -166,53 +62,41 @@ RegistrarClient::~RegistrarClient() {}
 RegistrarNode* RegistrarClient::GetNode() { return node_; }
 
 void RegistrarClient::OnIncoming(std::istringstream& istream) {
-    if (istream.rdbuf()->in_avail() < static_cast<std::streamsize>(sizeof(ChatRequestType))) {
-        LOG(WARNING) << "Dropping registrar packet: payload too short for request type";
-        return;
-    }
-
-    ChatRequestType request_type = ::read<ChatRequestType>(istream);
     ChatRequestType normalized_request_type;
     bool was_byteswapped = false;
-    if (!TryNormalizeChatRequestType(request_type, normalized_request_type, was_byteswapped)) {
-        LOG(ERROR) << "Invalid registrar message type received: "
-                   << static_cast<uint16_t>(request_type);
+    bool usedWideRequestType = false;
+    if (!TryReadNormalizedRequestType(istream, normalized_request_type, was_byteswapped, usedWideRequestType)) {
+        LOG(ERROR) << "Invalid registrar message type received";
         return;
     }
 
-    if (was_byteswapped) {
-        LOG(WARNING) << "Registrar request type required byte swap: "
-                     << static_cast<uint16_t>(request_type) << " -> "
-                     << static_cast<uint16_t>(normalized_request_type);
+    if (usedWideRequestType && !hasLoggedWideRequestTypeCompatibility_) {
+        LOG(WARNING) << "Registrar request used 32-bit request type framing; enabling compatibility mode"
+                     << " (further warnings suppressed)";
+        hasLoggedWideRequestTypeCompatibility_ = true;
     }
 
     SetSerializationByteSwap(istream, was_byteswapped);
     SetConnectionByteSwap(was_byteswapped);
 
     switch (normalized_request_type) {
-    case ChatRequestType::LOGOUTAVATAR:
-        LOG(WARNING) << "Received legacy registrar request type alias (1); "
-                     << "handling as REGISTRAR_GETCHATSERVER";
-        [[fallthrough]];
     case ChatRequestType::REGISTRAR_GETCHATSERVER: {
         char endpoint[64] = {0};
         GetConnection()->GetDestinationIp().GetAddress(endpoint);
         constexpr uint16_t kRegistrarRequestType = static_cast<uint16_t>(ChatRequestType::REGISTRAR_GETCHATSERVER);
 
         ReqRegistrarGetChatServer request{};
-        bool payloadByteSwap = was_byteswapped;
-        if (!TryReadRegistrarLookupRequest(istream, request, payloadByteSwap)) {
+        read(istream, request);
+        if (istream.fail() || istream.bad()) {
             LOG(WARNING) << "Registrar handler decode failure"
                          << " request_type=" << kRegistrarRequestType
                          << " remote=" << endpoint << ":" << GetConnection()->GetDestinationPort()
                          << " failure_category=decode";
-            RegistrarGetChatServer::ResponseType response{request.track};
+            RegistrarGetChatServer::ResponseType response{0};
             response.result = ChatResultCode::INVALID_INPUT;
             Send(response);
             return;
         }
-
-        SetConnectionByteSwap(payloadByteSwap);
 
         RegistrarGetChatServer::ResponseType response{request.track};
         const auto failureCategory = stationchat::ExecuteHandlerWithFallbacks(

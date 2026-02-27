@@ -1,4 +1,3 @@
-
 #pragma once
 
 #include "NodeClient.hpp"
@@ -19,4 +18,5 @@ private:
     void OnIncoming(std::istringstream& istream) override;
 
     RegistrarNode* node_;
+    bool hasLoggedWideRequestTypeCompatibility_ = false;
 };
