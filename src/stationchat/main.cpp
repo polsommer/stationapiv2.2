@@ -156,11 +156,11 @@ StationChatConfig BuildConfiguration(int argc, const char* argv[]) {
 
     po::options_description options("Configuration");
     options.add_options()
-        ("gateway_address", po::value<std::string>(&config.gatewayAddress)->default_value("192.168.88.6"),
+        ("gateway_address", po::value<std::string>(&config.gatewayAddress)->default_value("192.168.88.7"),
             "address for gateway connections")
         ("gateway_port", po::value<uint16_t>(&config.gatewayPort)->default_value(5001),
             "port for gateway connections")
-        ("registrar_address", po::value<std::string>(&config.registrarAddress)->default_value("192.168.88.6"),
+        ("registrar_address", po::value<std::string>(&config.registrarAddress)->default_value("192.168.88.7"),
             "address for registrar connections")
         ("registrar_port", po::value<uint16_t>(&config.registrarPort)->default_value(5000),
             "port for registrar connections")

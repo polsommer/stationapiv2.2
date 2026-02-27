@@ -1,11 +1,11 @@
 # Address that the gateway server will listen for connections on
-gateway_address = 192.168.88.6
+gateway_address = 192.168.88.7
 
 # Port the gateway server will listen for connections on
 gateway_port = 5001
 
 # Address that the registrar server will listen for connections on
-registrar_address = 192.168.88.6
+registrar_address = 192.168.88.7
 
 # Port the registrar server will listen for connections on
 registrar_port = 5000

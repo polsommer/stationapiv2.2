@@ -67,9 +67,9 @@ struct StationChatConfig {
     // Maintain compatibility with existing Star Wars Galaxies chat clients,
     // which expect protocol version 2 during the SETAPIVERSION handshake.
     const uint32_t version = 2;
-    std::string gatewayAddress{"192.168.88.6"};
+    std::string gatewayAddress{"192.168.88.7"};
     uint16_t gatewayPort{5001};
-    std::string registrarAddress{"192.168.88.6"};
+    std::string registrarAddress{"192.168.88.7"};
     uint16_t registrarPort{5000};
     std::string chatDatabaseHost{"mysql73.unoeuro.com"};
     uint16_t chatDatabasePort{3306};

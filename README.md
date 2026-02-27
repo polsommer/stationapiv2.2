@@ -174,11 +174,11 @@ swg@raspberrypi:~/stationapi $ ant clean
 
 🗄️ Database Setup
 
-### Provisioning MariaDB on `192.168.88.6`
+### Provisioning MariaDB on `192.168.88.7`
 
 The chat gateway expects a MariaDB instance that is reachable from the host
 running `stationchat`. The steps below assume your database server will live on
-the LAN at `192.168.88.6` (replace the address if you pick a different node).
+the LAN at `192.168.88.7` (replace the address if you pick a different node).
 
 1. **Install the server packages**
 
@@ -194,7 +194,7 @@ the LAN at `192.168.88.6` (replace the address if you pick a different node).
 
    ```ini
    [mysqld]
-   bind-address = 192.168.88.6
+   bind-address = 192.168.88.7
    ```
 
    Restart the service after saving the file:
@@ -232,7 +232,7 @@ the LAN at `192.168.88.6` (replace the address if you pick a different node).
    initialization script using the new account:
 
    ```bash
-   mysql -h 192.168.88.6 -u swgchat -p swgchat < extras/init_database.sql
+   mysql -h 192.168.88.7 -u swgchat -p swgchat < extras/init_database.sql
    ```
 
 6. **Open the firewall (if applicable)**
@@ -249,7 +249,7 @@ the LAN at `192.168.88.6` (replace the address if you pick a different node).
 Edit `etc/stationapi/stationchat.cfg` (or the copy staged in `/home/swg/chat`)
 with the credentials you created above:
 
-- `database_host = 192.168.88.6`
+- `database_host = 192.168.88.7`
 - `database_user = swgchat`
 - `database_password = CHAT_PASSWORD`
 - `database_schema = swgchat`
