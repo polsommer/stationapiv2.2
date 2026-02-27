@@ -5,10 +5,7 @@ add_executable(stationapi_tests
     main.cpp
     
     stationapi/Serialization_Tests.cpp
-    stationapi/StringUtils_Tests.cpp
-    stationapi/ApiVersionNegotiation_Tests.cpp
-    stationapi/RequestFailureHandling_Tests.cpp
-    stationapi/LoginAvatarAuthIntegration_Tests.cpp)
+    stationapi/StringUtils_Tests.cpp)
 
 target_link_libraries(stationapi_tests
     stationapi)

@@ -8,19 +8,12 @@
 #include "StationChatConfig.hpp"
 #include "WebsiteIntegrationService.hpp"
 
-#include <sstream>
-
 GatewayNode::GatewayNode(StationChatConfig& config)
     : Node(this, config.gatewayAddress, config.gatewayPort, config.bindToIp)
     , config_{config} {
     auto connectionString = config.BuildDatabaseConnectionString();
     if (mariadb_open(connectionString.c_str(), &db_) != MARIADB_OK) {
-        std::ostringstream target;
-        target << "host=" << (config.chatDatabaseHost.empty() ? "<empty>" : config.chatDatabaseHost)
-               << ";port=" << config.chatDatabasePort
-               << ";schema=" << (config.chatDatabaseSchema.empty() ? "<empty>" : config.chatDatabaseSchema)
-               << ";socket=" << (config.chatDatabaseSocket.empty() ? "<none>" : config.chatDatabaseSocket);
-        throw std::runtime_error("Can't open database (" + target.str() + "): " + std::string{mariadb_errmsg(db_)});
+        throw std::runtime_error("Can't open database: " + std::string{mariadb_errmsg(db_)});
     }
 
     avatarService_ = std::make_unique<ChatAvatarService>(db_);

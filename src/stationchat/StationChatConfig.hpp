@@ -9,8 +9,6 @@
 #include <utility>
 #include <vector>
 
-class LoginAuthValidator;
-
 struct GatewayClusterEndpoint {
     std::string address;
     uint16_t port{0};
@@ -27,7 +25,7 @@ struct WebsiteIntegrationConfig {
     std::string onlineStatusTable{"web_avatar_status"};
     std::string mailTable{"web_persistent_message"};
     bool useSeparateDatabase{false};
-    std::string databaseHost{"127.0.0.1"};
+    std::string databaseHost{"mysql73.unoeuro.com"};
     uint16_t databasePort{3306};
     std::string databaseUser{"swgplus_com"};
     std::string databasePassword;
@@ -66,20 +64,14 @@ struct StationChatConfig {
         return stream.str();
     }
 
-    static constexpr uint32_t kLegacyApiVersion = 2;
-    static constexpr uint32_t kEnhancedApiVersion = 3;
-    static constexpr uint32_t kCapabilityMaskForV3 = 0x1;
-
-    uint32_t apiMinVersion{kLegacyApiVersion};
-    uint32_t apiMaxVersion{kEnhancedApiVersion};
-    // Keep version 2 as the default for compatibility unless explicitly configured.
-    uint32_t apiDefaultVersion{kLegacyApiVersion};
-    bool allowLegacyLogin{true};
-    std::string gatewayAddress{"0.0.0.0"};
+    // Maintain compatibility with existing Star Wars Galaxies chat clients,
+    // which expect protocol version 2 during the SETAPIVERSION handshake.
+    const uint32_t version = 2;
+    std::string gatewayAddress{"192.168.88.6"};
     uint16_t gatewayPort{5001};
-    std::string registrarAddress{"0.0.0.0"};
+    std::string registrarAddress{"192.168.88.6"};
     uint16_t registrarPort{5000};
-    std::string chatDatabaseHost{"127.0.0.1"};
+    std::string chatDatabaseHost{"mysql73.unoeuro.com"};
     uint16_t chatDatabasePort{3306};
     std::string chatDatabaseUser{"swgplus_com"};
     std::string chatDatabasePassword;
@@ -88,40 +80,7 @@ struct StationChatConfig {
     std::string loggerConfig;
     bool bindToIp{false};
     WebsiteIntegrationConfig websiteIntegration;
-    const LoginAuthValidator* loginAuthValidator{nullptr};
     std::vector<GatewayClusterEndpoint> gatewayCluster;
-
-    bool SupportsApiVersion(uint32_t version) const {
-        return version >= apiMinVersion && version <= apiMaxVersion;
-    }
-
-    uint32_t ResolveApiVersionForClient(uint32_t clientVersion) const {
-        if (clientVersion == kEnhancedApiVersion && SupportsApiVersion(kEnhancedApiVersion)) {
-            return kEnhancedApiVersion;
-        }
-
-        if (clientVersion == kLegacyApiVersion && SupportsApiVersion(kLegacyApiVersion)) {
-            return kLegacyApiVersion;
-        }
-
-        if (SupportsApiVersion(clientVersion)) {
-            return clientVersion;
-        }
-
-        if (SupportsApiVersion(apiDefaultVersion)) {
-            return apiDefaultVersion;
-        }
-
-        return apiMinVersion;
-    }
-
-    bool ShouldAcceptApiVersion(uint32_t clientVersion) const {
-        return SupportsApiVersion(clientVersion);
-    }
-
-    uint32_t CapabilityMaskForVersion(uint32_t version) const {
-        return version >= kEnhancedApiVersion ? kCapabilityMaskForV3 : 0;
-    }
 
     void NormalizeClusterGateways() {
         for (auto& endpoint : gatewayCluster) {

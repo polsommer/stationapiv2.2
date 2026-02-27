@@ -2,7 +2,6 @@
 #pragma once
 
 #include "UdpLibrary.hpp"
-#include "Serialization.hpp"
 
 #include <sstream>
 
@@ -16,16 +15,12 @@ public:
     void Send(const T& message) {
         ostream_.clear();
         ostream_.str("");
-        SetSerializationByteSwap(ostream_, connectionByteSwap_);
         write(ostream_, message);
         auto data = ostream_.str();
         Send(data.c_str(), data.length());
     }
 
     UdpConnection* GetConnection() { return connection_; }
-
-protected:
-    void SetConnectionByteSwap(bool enabled) { connectionByteSwap_ = enabled; }
 
 private:
     void Send(const char* data, uint32_t length);
@@ -37,5 +32,4 @@ private:
     std::ostringstream ostream_;
     std::istringstream istream_;
     UdpConnection* connection_;
-    bool connectionByteSwap_ = false;
 };

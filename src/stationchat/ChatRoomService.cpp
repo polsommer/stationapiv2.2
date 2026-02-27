@@ -15,32 +15,23 @@ ChatRoomService::~ChatRoomService() {}
 void ChatRoomService::LoadRoomsFromStorage(const std::u16string& baseAddress) {
     rooms_.clear();
 
-    MariaDBStatement* stmt = nullptr;
+    MariaDBStatement* stmt;
 
     char sql[] = "SELECT id, creator_id, creator_name, creator_address, room_name, room_topic, "
                  "room_password, room_prefix, room_address, room_attributes, room_max_size, "
-                 "room_message_id, created_at, node_level FROM room WHERE room_address LIKE @baseAddressPattern";
+                 "room_message_id, created_at, node_level FROM room WHERE room_address LIKE @baseAddress||'%'";
 
     if (mariadb_prepare(db_, sql, -1, &stmt, 0) != MARIADB_OK) {
         throw std::runtime_error("Error preparing SQL statement");
     }
 
-    int baseAddressIdx = mariadb_bind_parameter_index(stmt, "@baseAddressPattern");
-    if (baseAddressIdx <= 0) {
-        mariadb_finalize(stmt);
-        throw std::runtime_error("Error resolving SQL parameter @baseAddressPattern");
-    }
+    int baseAddressIdx = mariadb_bind_parameter_index(stmt, "@baseAddress");
 
     auto baseAddressStr = FromWideString(baseAddress);
     LOG(INFO) << "Loading rooms for base address: " << baseAddressStr;
-    auto baseAddressPattern = baseAddressStr + "%";
-    if (mariadb_bind_text(stmt, baseAddressIdx, baseAddressPattern.c_str(), -1, 0) != MARIADB_OK) {
-        mariadb_finalize(stmt);
-        throw std::runtime_error("Error binding SQL parameter @baseAddressPattern");
-    }
+    mariadb_bind_text(stmt, baseAddressIdx, baseAddressStr.c_str(), -1, 0);
 
-    int stepResult = MARIADB_DONE;
-    while ((stepResult = mariadb_step(stmt)) == MARIADB_ROW) {
+    while (mariadb_step(stmt) == MARIADB_ROW) {
         auto room = std::make_unique<ChatRoom>();
         std::string tmp;
         room->roomId_ = nextRoomId_++;
@@ -76,19 +67,8 @@ void ChatRoomService::LoadRoomsFromStorage(const std::u16string& baseAddress) {
 
         if (!RoomExists(room->GetRoomAddress())) {
             rooms_.emplace_back(std::move(room));
-            LoadAdministrators(rooms_.back().get());
-            LoadModerators(rooms_.back().get());
-            LoadBanned(rooms_.back().get());
         }
     }
-
-    if (stepResult != MARIADB_DONE) {
-        auto error = mariadb_errmsg(db_);
-        mariadb_finalize(stmt);
-        throw std::runtime_error(std::string("Error loading rooms from storage: ") + error);
-    }
-
-    mariadb_finalize(stmt);
 
     LOG(INFO) << "Rooms currently loaded: " << rooms_.size();
 }
@@ -228,12 +208,8 @@ ChatRoom* ChatRoomService::GetRoom(const std::u16string& roomAddress) {
     return room;
 }
 
-std::vector<ChatRoom*> ChatRoomService::GetJoinedRooms(const ChatAvatar* avatar) {
+std::vector<ChatRoom*> ChatRoomService::GetJoinedRooms(const ChatAvatar * avatar) {
     std::vector<ChatRoom*> rooms;
-
-    if (!avatar) {
-        return rooms;
-    }
 
     for (auto& room : rooms_) {
         if (room->IsInRoom(avatar->GetAvatarId())) {
@@ -272,7 +248,7 @@ void ChatRoomService::LoadModerators(ChatRoom * room) {
     }
 
     int roomIdIdx = mariadb_bind_parameter_index(stmt, "@room_id");
-    mariadb_bind_int(stmt, roomIdIdx, room->dbId_);
+    mariadb_bind_int(stmt, roomIdIdx, room->GetRoomId());
 
     while (mariadb_step(stmt) == MARIADB_ROW) {
         uint32_t moderatorId = mariadb_column_int(stmt, 0);
@@ -282,7 +258,7 @@ void ChatRoomService::LoadModerators(ChatRoom * room) {
 
 void ChatRoomService::PersistModerator(uint32_t moderatorId, uint32_t roomId) {
     MariaDBStatement* stmt;
-    char sql[] = "INSERT IGNORE INTO room_moderator (moderator_avatar_id, room_id) VALUES (@moderator_avatar_id, @room_id)";
+    char sql[] = "INSERT OR IGNORE INTO room_moderator (moderator_avatar_id, room_id) VALUES (@moderator_avatar_id, @room_id)";
 
     auto result = mariadb_prepare(db_, sql, -1, &stmt, 0);
     if (result != MARIADB_OK) {
@@ -332,7 +308,7 @@ void ChatRoomService::LoadAdministrators(ChatRoom * room) {
     }
 
     int roomIdIdx = mariadb_bind_parameter_index(stmt, "@room_id");
-    mariadb_bind_int(stmt, roomIdIdx, room->dbId_);
+    mariadb_bind_int(stmt, roomIdIdx, room->GetRoomId());
 
     while (mariadb_step(stmt) == MARIADB_ROW) {
         uint32_t administratorId = mariadb_column_int(stmt, 0);
@@ -342,7 +318,7 @@ void ChatRoomService::LoadAdministrators(ChatRoom * room) {
 
 void ChatRoomService::PersistAdministrator(uint32_t administratorId, uint32_t roomId) {
     MariaDBStatement* stmt;
-    char sql[] = "INSERT IGNORE INTO room_administrator (administrator_avatar_id, room_id) VALUES (@administrator_avatar_id, @room_id)";
+    char sql[] = "INSERT OR IGNORE INTO room_administrator (administrator_avatar_id, room_id) VALUES (@administrator_avatar_id, @room_id)";
 
     auto result = mariadb_prepare(db_, sql, -1, &stmt, 0);
     if (result != MARIADB_OK) {
@@ -392,7 +368,7 @@ void ChatRoomService::LoadBanned(ChatRoom * room) {
     }
 
     int roomIdIdx = mariadb_bind_parameter_index(stmt, "@room_id");
-    mariadb_bind_int(stmt, roomIdIdx, room->dbId_);
+    mariadb_bind_int(stmt, roomIdIdx, room->GetRoomId());
 
     while (mariadb_step(stmt) == MARIADB_ROW) {
         uint32_t bannedId = mariadb_column_int(stmt, 0);
@@ -402,14 +378,14 @@ void ChatRoomService::LoadBanned(ChatRoom * room) {
 
 void ChatRoomService::PersistBanned(uint32_t bannedId, uint32_t roomId) {
     MariaDBStatement* stmt;
-    char sql[] = "INSERT IGNORE INTO room_ban (banned_avatar_id, room_id) VALUES (@banned_avatar_id, @room_id)";
+    char sql[] = "INSERT OR IGNORE INTO room_ban (banned_avatar_id, room_id) VALUES (@banned_avatar_id, @room_id)";
 
     auto result = mariadb_prepare(db_, sql, -1, &stmt, 0);
     if (result != MARIADB_OK) {
         throw MariaDBException{result, mariadb_errmsg(db_)};
     }
 
-    int bannedAvatarIdIdx = mariadb_bind_parameter_index(stmt, "@banned_avatar_id");
+    int bannedAvatarIdIdx = mariadb_bind_parameter_index(stmt, "@moderator_avatar_id");
     int roomIdIdx = mariadb_bind_parameter_index(stmt, "@room_id");
 
     mariadb_bind_int(stmt, bannedAvatarIdIdx, bannedId);

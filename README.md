@@ -31,7 +31,7 @@ and extend.
 | C++14-compatible compiler | Builds the `stationchat` gateway binaries |
 | [Boost.Program_options](https://www.boost.org/doc/libs/release/doc/html/program_options.html) | Parses configuration flags and files |
 | [MariaDB Client Libraries](https://mariadb.com/kb/en/mariadb-client-library/) | Provides database connectivity |
-| `udplibrary` | Bundled open-source UDP backend with real socket networking support for registrar/gateway traffic. |
+| `udplibrary` | Bundled open-source stub of the proprietary UDP manager. Replace it with the original library when a licensed copy is available. |
 | [Apache Ant](https://ant.apache.org/) *(optional)* | Supplies a compatibility wrapper that mirrors historical build workflows |
 
 ---
@@ -42,7 +42,7 @@ The build can be completed entirely on a Raspberry Pi or any modern Linux
 distribution. Expect three high-level phases:
 
 1. **Install prerequisite packages** – compiler, libraries, and helper tools.
-2. **Fetch the source code (the bundled UDP library is production-ready and includes real networking).**
+2. **Fetch the source code (a stub UDP library is bundled; drop in the proprietary one if you have access).**
 3. **Compile and install the chat gateway.**
 
 ### Quick-start bootstrap script
@@ -60,7 +60,7 @@ cd stationapi
 
 What the script does:
 
-1. Ensures `externals/udplibrary` is present. The repository ships with an open-source UDP backend that binds sockets directly.
+1. Ensures `externals/udplibrary` is present. The repository ships with an open-source stub so manual steps are rarely required.
 2. Configures and builds the CMake project.
 3. Installs the runtime, default configuration files, and a `stationchat`
    launcher into `/home/swg/chat`.
@@ -162,7 +162,7 @@ Under the hood this target simply calls the same `cmake -S . -B build` and
 `extras/finalize_chat_install.sh` helper to drop the launcher and symlink. The
 wrapper performs a quick check before invoking CMake and stops early with a
 clear error if `externals/udplibrary` is missing so you can restore the bundled
-UDP backend before retrying. Pass
+stub or provide the original proprietary library before retrying. Pass
 `-Dinstall.prefix=/path/to/chatdir` if you need a different install location and
 `-Drun.link=/path/to/link` to override the symlink destination.
 
@@ -247,18 +247,12 @@ the LAN at `192.168.88.6` (replace the address if you pick a different node).
 ### Pointing `stationchat` at the database
 
 Edit `etc/stationapi/stationchat.cfg` (or the copy staged in `/home/swg/chat`)
-with explicit production values (do not rely on local defaults):
+with the credentials you created above:
 
-- `gateway_address = 192.168.88.10` (or your DNS name)
-- `registrar_address = 192.168.88.10` (or your DNS name)
-- `bind_to_ip = true` when binding to those explicit interface addresses
 - `database_host = 192.168.88.6`
 - `database_user = swgchat`
 - `database_password = CHAT_PASSWORD`
 - `database_schema = swgchat`
-
-For local development, the shipped defaults use neutral listen addresses (`0.0.0.0` for gateway/registrar) and
-`bind_to_ip = false` so startup is safe and obvious.
 
 🌐 Website Integration (Optional)
 

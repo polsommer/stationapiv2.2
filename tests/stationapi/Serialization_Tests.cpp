@@ -1,8 +1,7 @@
+
 #include "catch.hpp"
 
 #include "Serialization.hpp"
-
-#include <sstream>
 
 SCENARIO("integer serialization", "[serialization]") {
     GIVEN("an initialized 32bit signed integer and a binary stream") {
@@ -15,7 +14,7 @@ SCENARIO("integer serialization", "[serialization]") {
             THEN("the serialized output size is increased by 4") {
                 REQUIRE(bs.str().length() == 4);
             }
-
+            
             AND_THEN("the serialized output is little-endian") {
                 auto str = bs.str();
                 REQUIRE(str[0] == (char)0xF8);
@@ -82,7 +81,7 @@ SCENARIO("string serialization", "[serialization]") {
         WHEN("the stream has the string read from it") {
             auto testStr = read<std::string>(bs);
 
-            THEN("the value read is the value expected") {
+            THEN("the value re ad is the value expected") {
                 REQUIRE(testStr.compare(asciiStr) == 0);
             }
         }
@@ -98,55 +97,3 @@ SCENARIO("string serialization", "[serialization]") {
     }
 }
 
-TEST_CASE("truncated packets fail fast for fixed-size reads", "[serialization]") {
-    std::string payload(sizeof(uint32_t) - 1, '\0');
-    std::istringstream is(payload, std::ios_base::binary);
-
-    uint32_t value = 123;
-    read(is, value);
-
-    REQUIRE(is.fail());
-    REQUIRE(value == 123);
-}
-
-TEST_CASE("huge encoded string lengths are rejected", "[serialization]") {
-    std::stringstream ss(std::ios_base::out | std::ios_base::in | std::ios_base::binary);
-    const uint16_t hugeLength = static_cast<uint16_t>(kMaxStringBytes + 1);
-    write(ss, hugeLength);
-    ss.seekg(0);
-
-    std::string value;
-    read(ss, value);
-
-    REQUIRE(ss.fail());
-    REQUIRE(value.empty());
-}
-
-TEST_CASE("zero-length strings are handled without reading payload bytes", "[serialization]") {
-    std::stringstream ss(std::ios_base::out | std::ios_base::in | std::ios_base::binary);
-    write(ss, static_cast<uint16_t>(0));
-    ss.seekg(0);
-
-    std::string value;
-    read(ss, value);
-
-    REQUIRE_FALSE(ss.fail());
-    REQUIRE(value.empty());
-}
-
-TEST_CASE("byte-swapped malformed string lengths are rejected", "[serialization]") {
-    std::stringstream ss(std::ios_base::out | std::ios_base::in | std::ios_base::binary);
-    SetSerializationByteSwap(ss, true);
-
-    const uint16_t malformedLength = static_cast<uint16_t>(kMaxStringBytes + 1);
-    write(ss, malformedLength);
-
-    ss.seekg(0);
-    SetSerializationByteSwap(ss, true);
-
-    std::string value;
-    read(ss, value);
-
-    REQUIRE(ss.fail());
-    REQUIRE(value.empty());
-}

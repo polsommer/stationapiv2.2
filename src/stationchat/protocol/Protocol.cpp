@@ -48,7 +48,6 @@
 
 #include "easylogging++.h"
 
-
 AddBan::AddBan(GatewayClient* client, const RequestType& request, ResponseType& response)
     : avatarService_{client->GetNode()->GetAvatarService()}
     , roomService_{client->GetNode()->GetRoomService()} {
@@ -441,27 +440,6 @@ LoginAvatar::LoginAvatar(GatewayClient* client, const RequestType& request, Resp
     LOG(INFO) << "LOGINAVATAR request received " << FromWideString(request.name) << "@"
               << FromWideString(request.address);
 
-    const auto& config = client->GetNode()->GetConfig();
-    const auto authResult = ValidateLoginAvatarAuth(request, config.allowLegacyLogin, config.loginAuthValidator);
-    if (!authResult.accepted) {
-        LOG(WARNING) << "LOGINAVATAR validation rejected "
-                     << FromWideString(request.name) << "@" << FromWideString(request.address)
-                     << " reason=" << authResult.reason
-                     << " allow_legacy_login=" << (config.allowLegacyLogin ? "true" : "false")
-                     << " has_v3_auth=" << (request.HasV3AuthProof() ? "true" : "false");
-        throw ChatResultException{ChatResultCode::INVALID_INPUT, authResult.reason.c_str()};
-    }
-
-    if (request.HasV3AuthProof()) {
-        LOG(INFO) << "LOGINAVATAR v3 authentication accepted "
-                  << FromWideString(request.name) << "@" << FromWideString(request.address)
-                  << " validation=" << authResult.reason;
-    } else {
-        LOG(WARNING) << "LOGINAVATAR using legacy fallback "
-                     << FromWideString(request.name) << "@" << FromWideString(request.address)
-                     << " reason=" << authResult.reason;
-    }
-
     auto avatar = avatarService_->GetAvatar(request.name, request.address);
     if (!avatar) {
         LOG(INFO) << "Login avatar does not exist, creating a new one "
@@ -495,11 +473,6 @@ LogoutAvatar::LogoutAvatar(GatewayClient* client, const RequestType& request, Re
     LOG(INFO) << "LOGOUTAVATAR request received - avatar id:" << request.avatarId;
 
     auto avatar = avatarService_->GetAvatar(request.avatarId);
-    if (!avatar) {
-        LOG(WARNING) << "LOGOUTAVATAR ignored for unknown avatar id:" << request.avatarId;
-        response.result = ChatResultCode::SUCCESS;
-        return;
-    }
 
     for (auto room : roomService_->GetJoinedRooms(avatar)) {
         auto addresses = room->GetConnectedAddresses();
@@ -765,20 +738,10 @@ SendRoomMessage::SendRoomMessage(
 SetApiVersion::SetApiVersion(
     GatewayClient* client, const RequestType& request, ResponseType& response) {
     LOG(INFO) << "SETAPIVERSION request received - version: " << request.version;
-
-    const auto& config = client->GetNode()->GetConfig();
-    response.version = config.ResolveApiVersionForClient(request.version);
-    response.capabilityMask = config.CapabilityMaskForVersion(response.version);
-
-    if (!config.ShouldAcceptApiVersion(request.version)) {
-        response.result = ChatResultCode::WRONGCHATSERVERFORREQUEST;
-        LOG(WARNING) << "SETAPIVERSION rejected - unsupported client version " << request.version
-                     << " (server range " << config.apiMinVersion << "-" << config.apiMaxVersion
-                     << ", negotiated=" << response.version << ")";
-        return;
-    }
-
-    response.result = ChatResultCode::SUCCESS;
+    response.version = client->GetNode()->GetConfig().version;
+    response.result = (response.version == request.version)
+        ? ChatResultCode::SUCCESS
+        : ChatResultCode::WRONGCHATSERVERFORREQUEST;
 }
 
 SetAvatarAttributes::SetAvatarAttributes(GatewayClient* client, const RequestType& request, ResponseType& response)

@@ -4,7 +4,6 @@
 #include "ChatEnums.hpp"
 #include "NodeClient.hpp"
 #include "MariaDB.hpp"
-#include "RequestFailureHandling.hpp"
 #include "easylogging++.h"
 
 class ChatAvatar;
@@ -46,34 +45,18 @@ private:
         typedef typename HandlerT::RequestType RequestT;
         typedef typename HandlerT::ResponseType ResponseT;
 
-        char endpoint[64] = {0};
-        GetConnection()->GetDestinationIp().GetAddress(endpoint);
-        const auto requestType = static_cast<uint16_t>(RequestT{}.type);
-
-        RequestT request{};
+        RequestT request;
         read(istream, request);
-        if (istream.fail() || istream.bad()) {
-            LOG(WARNING) << "Gateway handler decode failure"
-                         << " request_type=" << requestType
-                         << " remote=" << endpoint << ":" << GetConnection()->GetDestinationPort()
-                         << " failure_category=decode";
-            ResponseT response(request.track);
-            response.result = ChatResultCode::INVALID_INPUT;
-            Send(response);
-            return;
-        }
-
         ResponseT response(request.track);
 
-        const auto failureCategory = stationchat::ExecuteHandlerWithFallbacks(
-            response,
-            [&]() { HandlerT(this, request, response); });
-        if (failureCategory != stationchat::FailureCategory::NONE) {
-            LOG(ERROR) << "Gateway handler execution failure"
-                       << " request_type=" << requestType
-                       << " remote=" << endpoint << ":" << GetConnection()->GetDestinationPort()
-                       << " failure_category=" << stationchat::ToString(failureCategory)
-                       << " result=" << ToString(response.result);
+        try {
+            HandlerT(this, request, response);
+        } catch (const ChatResultException& e) {
+            response.result = e.code;
+            LOG(ERROR) << "ChatAPI Result Exception: [" << ToString(e.code) << "] " << e.message;
+        } catch (const MariaDBException& e) {
+            response.result = ChatResultCode::DATABASE;
+            LOG(ERROR) << "Database Error: [" << e.code << "] " << e.message;
         }
 
         Send(response);
@@ -83,5 +66,4 @@ private:
     ChatAvatarService* avatarService_;
     ChatRoomService* roomService_;
     PersistentMessageService* messageService_;
-    bool hasLoggedWideRequestTypeCompatibility_ = false;
 };

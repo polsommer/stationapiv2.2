@@ -7,7 +7,6 @@
 #include "GatewayNode.hpp"
 #include "Message.hpp"
 #include "PersistentMessageService.hpp"
-#include "Serialization.hpp"
 #include "MariaDB.hpp"
 #include "StationChatConfig.hpp"
 #include "UdpLibrary.hpp"
@@ -47,46 +46,6 @@
 
 #include "easylogging++.h"
 
-namespace {
-
-bool TryReadNormalizedRequestType(
-    std::istringstream& istream,
-    ChatRequestType& normalizedRequestType,
-    bool& requestTypeByteSwap,
-    bool& usedWideRequestType) {
-    usedWideRequestType = false;
-
-    if (istream.rdbuf()->in_avail() < static_cast<std::streamsize>(sizeof(uint16_t))) {
-        return false;
-    }
-
-    const auto canNormalizeCode = [](uint16_t code, ChatRequestType& normalized, bool& swapped) {
-        return TryNormalizeChatRequestType(static_cast<ChatRequestType>(code), normalized, swapped);
-    };
-
-    if (istream.rdbuf()->in_avail() >= static_cast<std::streamsize>(sizeof(uint32_t))) {
-        const auto lowWord = peekAt<uint16_t>(istream, 0);
-        const auto highWord = peekAt<uint16_t>(istream, sizeof(uint16_t));
-
-        if (highWord == 0 && canNormalizeCode(lowWord, normalizedRequestType, requestTypeByteSwap)) {
-            (void)::read<uint32_t>(istream);
-            usedWideRequestType = true;
-            return true;
-        }
-
-        if (lowWord == 0 && canNormalizeCode(highWord, normalizedRequestType, requestTypeByteSwap)) {
-            (void)::read<uint32_t>(istream);
-            usedWideRequestType = true;
-            return true;
-        }
-    }
-
-    const auto narrowType = ::read<uint16_t>(istream);
-    return canNormalizeCode(narrowType, normalizedRequestType, requestTypeByteSwap);
-}
-
-} // namespace
-
 GatewayClient::GatewayClient(UdpConnection* connection, GatewayNode* node)
     : NodeClient(connection)
     , node_{node}
@@ -99,24 +58,9 @@ GatewayClient::GatewayClient(UdpConnection* connection, GatewayNode* node)
 GatewayClient::~GatewayClient() {}
 
 void GatewayClient::OnIncoming(std::istringstream& istream) {
-    ChatRequestType normalized_request_type;
-    bool was_byteswapped = false;
-    bool usedWideRequestType = false;
-    if (!TryReadNormalizedRequestType(istream, normalized_request_type, was_byteswapped, usedWideRequestType)) {
-        LOG(INFO) << "Unknown request type received";
-        return;
-    }
+    ChatRequestType request_type = ::read<ChatRequestType>(istream);
 
-    if (usedWideRequestType && !hasLoggedWideRequestTypeCompatibility_) {
-        LOG(WARNING) << "Gateway request used 32-bit request type framing; enabling compatibility mode"
-                     << " (further warnings suppressed)";
-        hasLoggedWideRequestTypeCompatibility_ = true;
-    }
-
-    SetSerializationByteSwap(istream, was_byteswapped);
-    SetConnectionByteSwap(was_byteswapped);
-
-    switch (normalized_request_type) {
+    switch (request_type) {
     case ChatRequestType::LOGINAVATAR:
         HandleIncomingMessage<LoginAvatar>(istream);
         break;
@@ -214,8 +158,7 @@ void GatewayClient::OnIncoming(std::istringstream& istream) {
         HandleIncomingMessage<GetAnyAvatar>(istream);
         break;
     default:
-        LOG(INFO) << "Unknown request type received after normalization: "
-                  << static_cast<uint16_t>(normalized_request_type);
+        LOG(INFO) << "Unknown request type received: " << static_cast<uint16_t>(request_type);
         break;
     }
 }
