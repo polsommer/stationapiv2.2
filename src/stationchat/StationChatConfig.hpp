@@ -66,11 +66,9 @@ struct StationChatConfig {
         return stream.str();
     }
 
-    enum : uint32_t {
-        kLegacyApiVersion = 2,
-        kEnhancedApiVersion = 3,
-        kCapabilityMaskForV3 = 0x1
-    };
+    static constexpr uint32_t kLegacyApiVersion = 2;
+    static constexpr uint32_t kEnhancedApiVersion = 3;
+    static constexpr uint32_t kCapabilityMaskForV3 = 0x1;
 
     uint32_t apiMinVersion{kLegacyApiVersion};
     uint32_t apiMaxVersion{kEnhancedApiVersion};

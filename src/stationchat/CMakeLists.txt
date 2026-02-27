@@ -62,7 +62,6 @@ add_executable(
   RegistrarNode.hpp
   StationChatApp.cpp
   StationChatApp.hpp
-  StationChatConfig.cpp
   StationChatConfig.hpp)
   
 # cmake-format: off
